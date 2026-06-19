@@ -1,0 +1,397 @@
+// 商品目录 — 静态数据，不随用户变化
+// type: equipable | consumable | collectible
+// category: theme | effect | frame | quote | sound | calendar | item
+import { generateQuotes } from './quoteTemplates'
+
+export const categories = [
+  { key: 'all', icon: '🏪', label: '全部' },
+  { key: 'theme', icon: '🎨', label: '主题' },
+  { key: 'effect', icon: '✨', label: '特效' },
+  { key: 'frame', icon: '🖼️', label: '相框' },
+  { key: 'quote', icon: '📖', label: '语录' },
+  { key: 'sound', icon: '🎵', label: '音效' },
+  { key: 'calendar', icon: '📅', label: '日历' },
+  { key: 'item', icon: '🎫', label: '道具' },
+  { key: 'limited', icon: '⏰', label: '限时' },
+  { key: 'gacha', icon: '🎰', label: '抽奖' },
+  { key: 'premium_gacha', icon: '💎', label: '高级抽奖' },
+  { key: 'title', icon: '🏅', label: '称号' },
+  { key: 'mine', icon: '👤', label: '我的' },
+]
+
+export const catalog = [
+  // ===== 🎨 主题皮肤 (20) =====
+  // 入门级 (200-300, ~2周攒)
+  { id: 'theme_green', name: '森林绿', icon: '🌿', category: 'theme', type: 'equipable', price: 200, desc: '签到金币+5%', data: { gradient: 'linear-gradient(135deg, #7ab89a, #8ac4a8)', accent: '#7ab89a', lightBg: 'linear-gradient(135deg, #f0faf4, #e8f8ee)', bonus: 5 } },
+  { id: 'theme_orange', name: '日落橙', icon: '🌅', category: 'theme', type: 'equipable', price: 230, desc: '签到金币+5%', data: { gradient: 'linear-gradient(135deg, #d4a0b4, #c8b080)', accent: '#d4a0b4', lightBg: 'linear-gradient(135deg, #faf4f0, #fdf8f2)', bonus: 5 } },
+  { id: 'theme_autumn', name: '秋日暖阳', icon: '🍂', category: 'theme', type: 'equipable', price: 230, desc: '签到金币+5%', data: { gradient: 'linear-gradient(135deg, #d4b898, #c8a888)', accent: '#d4b898', lightBg: 'linear-gradient(135deg, #faf6f0, #fdf4e8)', bonus: 5 } },
+  { id: 'theme_matcha', name: '抹茶', icon: '🍵', category: 'theme', type: 'equipable', price: 260, desc: '签到金币+5%', data: { gradient: 'linear-gradient(135deg, #8ab87a, #7aaa68)', accent: '#8ab87a', lightBg: 'linear-gradient(135deg, #f4faf0, #ecf8e8)', bonus: 5 } },
+  // 中级 (350-500, ~1月攒)
+  { id: 'theme_blue', name: '海洋蓝', icon: '🌊', category: 'theme', type: 'equipable', price: 350, desc: '签到金币+8%', data: { gradient: 'linear-gradient(135deg, #7ab4d4, #88c4e0)', accent: '#7ab4d4', lightBg: 'linear-gradient(135deg, #f0f6fa, #e8f2f8)', bonus: 8 } },
+  { id: 'theme_mint', name: '薄荷青', icon: '🍀', category: 'theme', type: 'equipable', price: 350, desc: '签到金币+8%', data: { gradient: 'linear-gradient(135deg, #7ab8b0, #88c8b8)', accent: '#7ab8b0', lightBg: 'linear-gradient(135deg, #f0faf8, #e8f8f4)', bonus: 8 } },
+  { id: 'theme_sunset', name: '晚霞', icon: '🌇', category: 'theme', type: 'equipable', price: 400, desc: '签到金币+8%', data: { gradient: 'linear-gradient(135deg, #d4a0a8, #c8b080)', accent: '#d4a0a8', lightBg: 'linear-gradient(135deg, #faf2f0, #fdf6f0)', bonus: 8 } },
+  { id: 'theme_coral', name: '珊瑚海', icon: '🐚', category: 'theme', type: 'equipable', price: 420, desc: '签到金币+8%', data: { gradient: 'linear-gradient(135deg, #d4a8b0, #c8b0c0)', accent: '#d4a8b0', lightBg: 'linear-gradient(135deg, #faf2f4, #faf0f6)', bonus: 8 } },
+  { id: 'theme_purple', name: '暗夜紫', icon: '🌙', category: 'theme', type: 'equipable', price: 450, desc: '签到金币+8%', data: { gradient: 'linear-gradient(135deg, #8b9fd4, #a4b3d6)', accent: '#8b9fd4', lightBg: 'linear-gradient(135deg, #f0f2f8, #f5f3fa)', bonus: 8 } },
+  { id: 'theme_forest', name: '深林', icon: '🌲', category: 'theme', type: 'equipable', price: 450, desc: '签到金币+8%', data: { gradient: 'linear-gradient(135deg, #6a8a7a, #7a9a8a)', accent: '#6a8a7a', lightBg: 'linear-gradient(135deg, #f0f6f2, #e8f2ec)', bonus: 8 } },
+  // 高级 (600-800, ~1.5-2月攒)
+  { id: 'theme_pink', name: '樱花粉', icon: '🌸', category: 'theme', type: 'equipable', price: 600, desc: '签到金币+10%', data: { gradient: 'linear-gradient(135deg, #d4a0c0, #c8a0b8)', accent: '#d4a0c0', lightBg: 'linear-gradient(135deg, #faf0f4, #fdf2f6)', bonus: 10 } },
+  { id: 'theme_dream', name: '梦幻紫', icon: '💜', category: 'theme', type: 'equipable', price: 600, desc: '签到金币+10%', data: { gradient: 'linear-gradient(135deg, #a094c4, #b0a4d0)', accent: '#a094c4', lightBg: 'linear-gradient(135deg, #f4f0fa, #f6f2fc)', bonus: 10 } },
+  { id: 'theme_lavender', name: '薰衣草田', icon: '💐', category: 'theme', type: 'equipable', price: 650, desc: '签到金币+10%', data: { gradient: 'linear-gradient(135deg, #a0a4d0, #b0b4d8)', accent: '#a0a4d0', lightBg: 'linear-gradient(135deg, #f4f2fa, #f6f4fc)', bonus: 10 } },
+  { id: 'theme_ice', name: '冰川白', icon: '❄️', category: 'theme', type: 'equipable', price: 700, desc: '签到金币+10%', data: { gradient: 'linear-gradient(135deg, #8ab8c0, #a0c8d0)', accent: '#8ab8c0', lightBg: 'linear-gradient(135deg, #f0f8fa, #f0f4f8)', bonus: 10 } },
+  { id: 'theme_red', name: '烈焰红', icon: '🔥', category: 'theme', type: 'equipable', price: 700, desc: '签到金币+10%', data: { gradient: 'linear-gradient(135deg, #c8a080, #b89878)', accent: '#c8a080', lightBg: 'linear-gradient(135deg, #faf4f0, #faf2f0)', bonus: 10 } },
+  { id: 'theme_cherry', name: '樱桃红', icon: '🍒', category: 'theme', type: 'equipable', price: 750, desc: '签到金币+10%', data: { gradient: 'linear-gradient(135deg, #c8a0a8, #b89898)', accent: '#c8a0a8', lightBg: 'linear-gradient(135deg, #faf2f2, #faf0f2)', bonus: 10 } },
+  // 顶级 (1000-1500, ~3月攒)
+  { id: 'theme_black', name: '星空黑', icon: '🌌', category: 'theme', type: 'equipable', price: 1000, desc: '签到金币+12%', data: { gradient: 'linear-gradient(135deg, #2a2a3e, #3a3a50)', accent: '#6a6a8a', lightBg: 'linear-gradient(135deg, #2a2a3e, #3a3a50)', bonus: 12 } },
+  { id: 'theme_cyber', name: '赛博朋克', icon: '🎆', category: 'theme', type: 'equipable', price: 1200, desc: '签到金币+12%', data: { gradient: 'linear-gradient(135deg, #a080b0, #8080c0)', accent: '#a080b0', lightBg: 'linear-gradient(135deg, #f4f0f8, #f0f0fa)', bonus: 12 } },
+  { id: 'theme_galaxy', name: '银河', icon: '🪐', category: 'theme', type: 'equipable', price: 1300, desc: '签到金币+12%', data: { gradient: 'linear-gradient(135deg, #2a2840, #3a3858, #4a4868)', accent: '#7a78a0', lightBg: 'linear-gradient(135deg, #2a2840, #3a3858)', bonus: 12 } },
+  { id: 'theme_aurora', name: '极光', icon: '🌌', category: 'theme', type: 'equipable', price: 1500, desc: '签到金币+15%', data: { gradient: 'linear-gradient(135deg, #7ab0c0, #80a0d0, #a090c0)', accent: '#80a0d0', lightBg: 'linear-gradient(135deg, #f0f6fa, #f0f2fa)', bonus: 15 } },
+
+  // ===== ✨ 签到特效 (16) =====
+  // 基础 (80-120, ~1周攒)
+  { id: 'effect_confetti', name: '撒花', icon: '🎊', category: 'effect', type: 'equipable', price: 80, data: { animation: 'confetti' } },
+  { id: 'effect_fireworks', name: '烟花', icon: '🎆', category: 'effect', type: 'equipable', price: 100, data: { animation: 'fireworks' } },
+  { id: 'effect_bubble', name: '泡泡', icon: '🫧', category: 'effect', type: 'equipable', price: 100, data: { animation: 'bubble' } },
+  { id: 'effect_leaves', name: '落叶', icon: '🍃', category: 'effect', type: 'equipable', price: 120, data: { animation: 'leaves' } },
+  // 进阶 (180-300, ~2-3周攒)
+  { id: 'effect_sakura', name: '樱花飘落', icon: '🌸', category: 'effect', type: 'equipable', price: 180, data: { animation: 'sakura' } },
+  { id: 'effect_snow', name: '雪花纷飞', icon: '❄️', category: 'effect', type: 'equipable', price: 180, data: { animation: 'snow' } },
+  { id: 'effect_lightning', name: '闪电', icon: '⚡', category: 'effect', type: 'equipable', price: 220, data: { animation: 'lightning' } },
+  { id: 'effect_butterfly', name: '蝴蝶', icon: '🦋', category: 'effect', type: 'equipable', price: 260, data: { animation: 'butterfly' } },
+  { id: 'effect_stars', name: '星辰', icon: '⭐', category: 'effect', type: 'equipable', price: 300, data: { animation: 'stars' } },
+  // 高级 (400-600, ~1-1.5月攒)
+  { id: 'effect_rainbow', name: '彩虹', icon: '🌈', category: 'effect', type: 'equipable', price: 400, data: { animation: 'rainbow' } },
+  { id: 'effect_fire', name: '烈焰', icon: '🔥', category: 'effect', type: 'equipable', price: 480, data: { animation: 'fire' } },
+  { id: 'effect_comet', name: '彗星', icon: '☄️', category: 'effect', type: 'equipable', price: 520, data: { animation: 'comet' } },
+  { id: 'effect_aurora', name: '极光', icon: '🌈', category: 'effect', type: 'equipable', price: 600, data: { animation: 'aurora' } },
+  // 顶级 (750-1000, ~2-3月攒)
+  { id: 'effect_explosion', name: '爆炸', icon: '💥', category: 'effect', type: 'equipable', price: 750, data: { animation: 'explosion' } },
+  { id: 'effect_galaxy', name: '银河漩涡', icon: '🌀', category: 'effect', type: 'equipable', price: 900, data: { animation: 'galaxy' } },
+  { id: 'effect_magic_circle', name: '魔法阵', icon: '🔯', category: 'effect', type: 'equipable', price: 1000, data: { animation: 'magic_circle' } },
+
+  // ===== 🖼️ 周报相框 (16) =====
+  // 基础 (50-80, ~3-5天攒)
+  { id: 'frame_classic', name: '经典紫', icon: '📷', category: 'frame', type: 'equipable', price: 50, desc: '签到金币+3%', data: { style: 'solid', color: '#667eea', width: 4, titleColor: '#667eea', statDotColors: ['#667eea','#764ba2','#a78bfa','#818cf8'], progressColors: ['#667eea','#a78bfa'], weekDotColor: '#667eea', sloganColor: '#a78bfa', dividerColor: '#eef2ff', bonus: 3 } },
+  { id: 'frame_heart', name: '爱心', icon: '💖', category: 'frame', type: 'equipable', price: 60, desc: '签到金币+3%', data: { style: 'dashed', color: '#f5576c', width: 3, titleColor: '#f5576c', statDotColors: ['#f5576c','#fb7185','#f43f5e','#e11d48'], progressColors: ['#f5576c','#fb7185'], weekDotColor: '#f5576c', sloganColor: '#fda4af', dividerColor: '#fff1f2', bonus: 3 } },
+  { id: 'frame_nature', name: '自然', icon: '🌿', category: 'frame', type: 'equipable', price: 60, desc: '签到金币+3%', data: { style: 'double', color: '#43e97b', width: 3, titleColor: '#059669', statDotColors: ['#43e97b','#34d399','#22c55e','#10b981'], progressColors: ['#43e97b','#38f9d7'], weekDotColor: '#22c55e', sloganColor: '#86efac', dividerColor: '#f0fdf4', bonus: 3 } },
+  { id: 'frame_bow', name: '蝴蝶结', icon: '🎀', category: 'frame', type: 'equipable', price: 70, desc: '签到金币+3%', data: { style: 'outset', color: '#ffecd2', width: 3, titleColor: '#ea580c', statDotColors: ['#ffecd2','#fdba74','#fb923c','#f97316'], progressColors: ['#ffecd2','#fcb69f'], weekDotColor: '#f97316', sloganColor: '#fdba74', dividerColor: '#fff7ed', bonus: 3 } },
+  // 中级 (120-180, ~1-2周攒)
+  { id: 'frame_ocean', name: '海洋', icon: '🌊', category: 'frame', type: 'equipable', price: 120, desc: '签到金币+5%', data: { style: 'solid', color: '#0ea5e9', width: 3, titleColor: '#0284c7', statDotColors: ['#0ea5e9','#38bdf8','#06b6d4','#22d3ee'], progressColors: ['#0ea5e9','#38bdf8'], weekDotColor: '#0ea5e9', sloganColor: '#7dd3fc', dividerColor: '#f0f9ff', bonus: 5 } },
+  { id: 'frame_sakura_rain', name: '樱花雨', icon: '🌸', category: 'frame', type: 'equipable', price: 140, desc: '签到金币+5%', data: { style: 'dashed', color: '#f9a8d4', width: 3, bg: '#fdf2f8', titleColor: '#db2777', textColor: '#831843', statDotColors: ['#f9a8d4','#f472b6','#ec4899','#f9a8d4'], progressColors: ['#f9a8d4','#ec4899'], weekDotColor: '#f472b6', sloganColor: '#f9a8d4', dividerColor: '#fce7f3', bonus: 5 } },
+  { id: 'frame_cherry', name: '樱花', icon: '🌸', category: 'frame', type: 'equipable', price: 150, desc: '签到金币+5%', data: { style: 'solid', color: '#f472b6', width: 3, titleColor: '#db2777', statDotColors: ['#f472b6','#f9a8d4','#ec4899','#f472b6'], progressColors: ['#f472b6','#f9a8d4'], weekDotColor: '#ec4899', sloganColor: '#f9a8d4', dividerColor: '#fdf2f8', bonus: 5 } },
+  { id: 'frame_star', name: '星光', icon: '⭐', category: 'frame', type: 'equipable', price: 160, desc: '签到金币+5%', data: { style: 'solid', color: '#ffd89b', width: 3, titleColor: '#d97706', statDotColors: ['#ffd89b','#f59e0b','#fbbf24','#f59e0b'], progressColors: ['#ffd89b','#fbbf24'], weekDotColor: '#f59e0b', sloganColor: '#fcd34d', dividerColor: '#fffbeb', bonus: 5 } },
+  { id: 'frame_rainbow', name: '彩虹渐变', icon: '🌟', category: 'frame', type: 'equipable', price: 180, desc: '签到金币+5%', data: { style: 'gradient', colors: ['#667eea', '#f5576c'], width: 3, titleColor: '#667eea', statDotColors: ['#667eea','#ec4899','#f5576c','#a855f7'], progressColors: ['#667eea','#f5576c'], weekDotColor: '#ec4899', sloganColor: '#a78bfa', dividerColor: '#fdf2f8', bonus: 5 } },
+  // 高级 (250-400, ~3-4周攒)
+  { id: 'frame_crystal', name: '水晶', icon: '🔮', category: 'frame', type: 'equipable', price: 250, desc: '签到金币+8%', data: { style: 'ridge', color: '#a18cd1', width: 3, titleColor: '#7c3aed', statDotColors: ['#a18cd1','#c4b5fd','#8b5cf6','#a78bfa'], progressColors: ['#a18cd1','#c4b5fd'], weekDotColor: '#8b5cf6', sloganColor: '#c4b5fd', dividerColor: '#f5f3ff', bonus: 8 } },
+  { id: 'frame_neon', name: '霓虹', icon: '💜', category: 'frame', type: 'equipable', price: 300, desc: '签到金币+8%', data: { style: 'solid', color: '#a855f7', width: 3, bg: '#1e1b4b', titleColor: '#c084fc', textColor: '#e0e7ff', statDotColors: ['#a855f7','#c084fc','#8b5cf6','#a78bfa'], progressColors: ['#a855f7','#c084fc'], weekDotColor: '#a855f7', sloganColor: '#6b7280', dividerColor: '#312e81', bonus: 8 } },
+  { id: 'frame_steampunk', name: '蒸汽朋克', icon: '⚙️', category: 'frame', type: 'equipable', price: 320, desc: '签到金币+8%', data: { style: 'ridge', color: '#b45309', width: 4, bg: '#1c1917', titleColor: '#d97706', textColor: '#d6d3d1', statDotColors: ['#b45309','#d97706','#f59e0b','#b45309'], progressColors: ['#b45309','#f59e0b'], weekDotColor: '#d97706', sloganColor: '#78716c', dividerColor: '#292524', bonus: 8 } },
+  { id: 'frame_dark', name: '暗黑', icon: '🖤', category: 'frame', type: 'equipable', price: 350, desc: '签到金币+8%', data: { style: 'solid', color: '#e94560', width: 4, bg: '#1a1a2e', titleColor: '#e94560', textColor: '#e0e0e0', statDotColors: ['#e94560','#ff6b6b','#ee5a5a','#e94560'], progressColors: ['#e94560','#ff6b6b'], weekDotColor: '#e94560', sloganColor: '#888', dividerColor: '#2a2a4a', bonus: 8 } },
+  { id: 'frame_gold', name: '金色奢华', icon: '✨', category: 'frame', type: 'equipable', price: 350, desc: '签到金币+8%', data: { style: 'solid', color: '#f59e0b', width: 4, bg: '#fffbeb', titleColor: '#b45309', statDotColors: ['#f59e0b','#fbbf24','#d97706','#f59e0b'], progressColors: ['#f59e0b','#fbbf24'], weekDotColor: '#d97706', sloganColor: '#fbbf24', dividerColor: '#fef3c7', bonus: 8 } },
+  // 顶级 (500-650, ~1.5-2月攒)
+  { id: 'frame_galaxy', name: '银河', icon: '🪐', category: 'frame', type: 'equipable', price: 500, desc: '签到金币+10%', data: { style: 'solid', color: '#6366f1', width: 4, bg: '#0f0c29', titleColor: '#818cf8', textColor: '#c7d2fe', statDotColors: ['#6366f1','#818cf8','#a5b4fc','#6366f1'], progressColors: ['#6366f1','#a78bfa'], weekDotColor: '#818cf8', sloganColor: '#6b7280', dividerColor: '#1e1b4b', bonus: 10 } },
+  { id: 'frame_aurora', name: '极光', icon: '🌌', category: 'frame', type: 'equipable', price: 650, desc: '签到金币+10%', data: { style: 'solid', color: '#00c6fb', width: 4, bg: '#0a0a2e', titleColor: '#00c6fb', textColor: '#b0e0e6', statDotColors: ['#00c6fb','#005bea','#a855f7','#00c6fb'], progressColors: ['#00c6fb','#a855f7'], weekDotColor: '#00c6fb', sloganColor: '#555', dividerColor: '#1a1a3e', bonus: 10 } },
+
+  // ===== 📖 语录扩展包（每包250条，由 quoteTemplates.js 生成） =====
+  ...generateQuotes(),
+
+  // ===== 🎵 音效包 (14) =====
+  // 基础 (50-80, ~3-5天攒)
+  { id: 'sound_bell', name: '清脆提示', icon: '🔔', category: 'sound', type: 'equipable', price: 50, data: { sound: 'bell' } },
+  { id: 'sound_drum', name: '鼓点', icon: '🥁', category: 'sound', type: 'equipable', price: 50, data: { sound: 'drum' } },
+  { id: 'sound_chime', name: '风铃', icon: '🎐', category: 'sound', type: 'equipable', price: 60, data: { sound: 'chime' } },
+  { id: 'sound_melody', name: '欢快旋律', icon: '🎵', category: 'sound', type: 'equipable', price: 70, data: { sound: 'melody' } },
+  { id: 'sound_pixel', name: '像素音效', icon: '🎮', category: 'sound', type: 'equipable', price: 80, data: { sound: 'pixel' } },
+  // 中级 (120-180, ~1-2周攒)
+  { id: 'sound_nature', name: '自然白噪', icon: '🌿', category: 'sound', type: 'equipable', price: 120, data: { sound: 'nature' } },
+  { id: 'sound_fanfare', name: '胜利号角', icon: '🎶', category: 'sound', type: 'equipable', price: 140, data: { sound: 'fanfare' } },
+  { id: 'sound_wind', name: '风声', icon: '🌬️', category: 'sound', type: 'equipable', price: 140, data: { sound: 'wind' } },
+  { id: 'sound_guitar', name: '吉他', icon: '🎸', category: 'sound', type: 'equipable', price: 160, data: { sound: 'guitar' } },
+  { id: 'sound_piano', name: '钢琴音', icon: '🎹', category: 'sound', type: 'equipable', price: 180, data: { sound: 'piano' } },
+  { id: 'sound_ocean', name: '海浪', icon: '🌊', category: 'sound', type: 'equipable', price: 180, data: { sound: 'ocean' } },
+  // 高级 (250-400, ~3-4周攒)
+  { id: 'sound_magic', name: '魔法音', icon: '✨', category: 'sound', type: 'equipable', price: 250, data: { sound: 'magic' } },
+  { id: 'sound_crystal', name: '水晶音', icon: '💎', category: 'sound', type: 'equipable', price: 300, data: { sound: 'crystal' } },
+  { id: 'sound_space', name: '太空', icon: '🚀', category: 'sound', type: 'equipable', price: 400, data: { sound: 'space' } },
+
+  // ===== 📅 日历皮肤 (12) =====
+  // 基础 (60-100, ~1周攒)
+  { id: 'cal_classic', name: '经典网格', icon: '📋', category: 'calendar', type: 'equipable', price: 60, data: { style: 'classic' } },
+  { id: 'cal_summer', name: '夏日向日葵', icon: '🌻', category: 'calendar', type: 'equipable', price: 80, data: { style: 'summer' } },
+  { id: 'cal_sunset', name: '日落', icon: '🌇', category: 'calendar', type: 'equipable', price: 90, data: { style: 'autumn' } },
+  { id: 'cal_autumn', name: '秋日暖阳', icon: '🍂', category: 'calendar', type: 'equipable', price: 90, data: { style: 'autumn' } },
+  // 中级 (130-180, ~1-2周攒)
+  { id: 'cal_spring', name: '春日樱花', icon: '🌸', category: 'calendar', type: 'equipable', price: 130, data: { style: 'spring' } },
+  { id: 'cal_coral', name: '珊瑚', icon: '🐚', category: 'calendar', type: 'equipable', price: 130, data: { style: 'spring' } },
+  { id: 'cal_winter', name: '冬日初雪', icon: '❄️', category: 'calendar', type: 'equipable', price: 150, data: { style: 'winter' } },
+  { id: 'cal_mountain', name: '山川', icon: '🏔️', category: 'calendar', type: 'equipable', price: 150, data: { style: 'winter' } },
+  { id: 'cal_rain', name: '雨天', icon: '🌧️', category: 'calendar', type: 'equipable', price: 160, data: { style: 'rain' } },
+  { id: 'cal_retro', name: '复古', icon: '📻', category: 'calendar', type: 'equipable', price: 180, data: { style: 'retro' } },
+  // 高级 (250-350, ~3-4周攒)
+  { id: 'cal_starry', name: '星空夜语', icon: '🌌', category: 'calendar', type: 'equipable', price: 250, data: { style: 'starry' } },
+  { id: 'cal_galaxy', name: '星河', icon: '🌌', category: 'calendar', type: 'equipable', price: 350, data: { style: 'starry' } },
+
+  // ===== 🎫 道具 (11) =====
+  // 纯娱乐 (不涉及金币盈亏)
+  { id: 'item_crystal', name: '运势水晶', icon: '🔮', category: 'item', type: 'consumable', price: 30, data: { propKey: 'crystal', desc: '查看今日趣味运势' } },
+  { id: 'item_refresh', name: '刷新卡', icon: '🔄', category: 'item', type: 'consumable', price: 50, data: { propKey: 'refresh', desc: '刷新今日语录' } },
+  // 签到增幅 (高风险：50%赚50%亏)
+  { id: 'item_double', name: '双倍金币', icon: '✨', category: 'item', type: 'consumable', price: 30, data: { propKey: 'double_coin', desc: '下次签到金币×2，50%概率回本' } },
+  { id: 'item_triple', name: '三倍金币', icon: '💎', category: 'item', type: 'consumable', price: 60, data: { propKey: 'triple_coin', desc: '下次签到金币×3，50%概率回本' } },
+  { id: 'item_magnet', name: '金币磁铁', icon: '🧲', category: 'item', type: 'consumable', price: 100, data: { propKey: 'magnet', desc: '下次签到金币×5，50%概率回本' } },
+  { id: 'item_lucky', name: '幸运草', icon: '🍀', category: 'item', type: 'consumable', price: 25, data: { propKey: 'lucky', desc: '下次签到额外+0~50币，50%概率赚' } },
+  { id: 'item_lucky_star', name: '幸运星', icon: '⭐', category: 'item', type: 'consumable', price: 50, data: { propKey: 'lucky_star', desc: '下次签到额外+0~100币，50%概率赚' } },
+  // 赌博类 (50%赚50%亏)
+  { id: 'item_box', name: '随机礼盒', icon: '🎁', category: 'item', type: 'consumable', price: 50, data: { propKey: 'random_box', desc: '随机获得0~100币，50%概率赚' } },
+  { id: 'item_wheel', name: '每日转盘', icon: '🎰', category: 'item', type: 'consumable', price: 100, data: { propKey: 'wheel', desc: '随机获得0~200币，50%概率赚' } },
+  { id: 'item_mystery', name: '神秘礼盒', icon: '📦', category: 'item', type: 'consumable', price: 200, data: { propKey: 'mystery_box', desc: '随机获得0~400币，50%概率赚' } },
+  { id: 'item_golden_touch', name: '点金术', icon: '👆', category: 'item', type: 'consumable', price: 500, data: { propKey: 'golden_touch', desc: '随机获得0~1000币，50%概率赚' } },
+]
+
+// 抽奖独占奖品池
+export const gachaPool = [
+  // 传说 (0.5%)
+  { id: 'gacha_aurora', name: '极光幻影', icon: '🌌', category: 'theme', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #7ab0c0, #80a0d0, #a090c0, #c0a0b0)', accent: '#a090c0', lightBg: 'linear-gradient(135deg, #f0f6fa, #f4f2fa)' } },
+  { id: 'gacha_unicorn', name: '彩虹独角兽', icon: '🦄', category: 'effect', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { animation: 'unicorn' } },
+  { id: 'gacha_diamond_crown', name: '钻石皇冠', icon: '👑', category: 'frame', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { style: 'solid', color: '#b0d8e0', width: 5, bg: '#2a2a3e', titleColor: '#b0d8e0', textColor: '#d0e8f0', statDotColors: ['#b0d8e0','#80b8c8','#c8d8a0','#b0d8e0'], progressColors: ['#b0d8e0','#c8d8a0'], weekDotColor: '#b0d8e0', sloganColor: '#888', dividerColor: '#3a3a50' } },
+
+  // 史诗 (3%)
+  { id: 'gacha_neon', name: '霓虹夜', icon: '🌃', category: 'theme', type: 'equipable', rarity: 'epic', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #c080b0, #8080b0)', accent: '#c080b0', lightBg: 'linear-gradient(135deg, #faf0f8, #f4f0fa)' } },
+  { id: 'gacha_stardust', name: '星尘爆', icon: '💫', category: 'effect', type: 'equipable', rarity: 'epic', source: 'gacha', data: { animation: 'stardust' } },
+  { id: 'gacha_quantum', name: '量子语录', icon: '🔬', category: 'quote', type: 'collectible', rarity: 'epic', source: 'gacha', data: { quotes: ['观测即改变，行动即创造', '概率云中藏着无限可能', '你是自己宇宙的观测者', '不确定性才是确定的', '波函数坍缩的那一刻，你选择了自己', '量子纠缠：你和梦想永远相连', '薛定谔的猫说：试了才知道', '平行宇宙的你也在加油', '测不准的是明天，确定的是努力', '你的能量远超想象', '万物皆量子，你我皆概率', '宇宙的尽头是哲学，哲学的尽头是孤独', '时间是最伟大的作者，它会写出完美的结局', '黑洞吞噬一切，但吞噬不了你的光芒', '平行世界里，你已经成功了', '暗物质看不见，但它真实存在，就像你的努力', '宇宙膨胀中，你也在成长', '光速不可超越，但思想可以', '熵增不可逆，但你可以创造秩序', '量子隧穿：不可能也能成为可能'] } },
+  { id: 'gacha_medal_phantom', name: '幻影行者', icon: '👻', category: 'frame', type: 'equipable', rarity: 'epic', source: 'gacha', data: { style: 'solid', color: '#8a80b0', width: 4, bg: '#2a2840', titleColor: '#a0a0c0', textColor: '#b8b0d0', statDotColors: ['#8a80b0','#a0a0c0','#b8b0d0','#8a80b0'], progressColors: ['#8a80b0','#a0a0c0'], weekDotColor: '#8a80b0', sloganColor: '#888', dividerColor: '#3a3858' } },
+
+  // 稀有 (12%)
+  { id: 'gacha_lavender', name: '薰衣草', icon: '💐', category: 'theme', type: 'equipable', rarity: 'rare', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #b8b0d4, #a0b8d0)', accent: '#b8b0d4', lightBg: 'linear-gradient(135deg, #f4f2fa, #f0f2f8)' } },
+  { id: 'gacha_firefly', name: '萤火虫', icon: '🪲', category: 'effect', type: 'equipable', rarity: 'rare', source: 'gacha', data: { animation: 'firefly' } },
+  { id: 'gacha_retro', name: '复古相框', icon: '📽️', category: 'frame', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'solid', color: '#a09080', width: 6, bg: '#f8f2e8', titleColor: '#908070', textColor: '#807060', statDotColors: ['#a09080','#b0a090','#c0b0a0','#a09080'], progressColors: ['#a09080','#c0b0a0'], weekDotColor: '#b0a090', sloganColor: '#a09080', dividerColor: '#f0e8d8' } },
+  { id: 'gacha_sarcasm', name: '冷笑话语录', icon: '😏', category: 'quote', type: 'collectible', rarity: 'rare', source: 'gacha', data: { quotes: [
+    '我这人从不记仇，一般有仇当场就报了', '别跟我说话，我有洁癖', '你的话我连标点符号都不信',
+    '我不是人民币，做不到人人都喜欢', '我的眼睛不是染缸，装不下你的各种脸色',
+    '你复杂的五官，掩饰不了你朴素的智商', '我不是高傲，也不是胡闹，只是厌倦了那些随时可能失去的依靠',
+    '我给你的东西你得珍惜，特别是脸', '你别总说自己不配，这世界上没几个人配得上你',
+    '我不是看不起你，我是压根没看你', '你那么优秀，别浪费在我身上', '我这个人吧，没什么优点，就是帅',
+    '你是我见过的最可爱的人，没有之一，除了我', '我不会因为你而改变自己，因为我本来就很完美',
+    '你的话我信了，就像我相信太阳从西边出来', '我不是话少，只是没必要对每个人都有说有笑',
+    '你的眼界，决定了你的世界', '我不是冷漠，我只是对不值得的人热情不起来',
+    '你是我见过最有趣的人，除了我认识的所有人', '我不记仇，我只是把账记清楚'
+  ] } },
+  { id: 'gacha_sakura_frame', name: '樱花边框', icon: '🌸', category: 'frame', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'solid', color: '#d4a8b8', width: 4, bg: '#faf0f4', titleColor: '#c898a8', textColor: '#b08898', statDotColors: ['#d4a8b8','#c8b0c0','#b8a0b0','#d4a8b8'], progressColors: ['#d4a8b8','#c8b0c0'], weekDotColor: '#c898a8', sloganColor: '#c8b0c0', dividerColor: '#f4eaf0' } },
+  { id: 'gacha_ocean', name: '深海主题', icon: '🐋', category: 'theme', type: 'equipable', rarity: 'rare', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #6a9ab0, #5888a0)', accent: '#6a9ab0', lightBg: 'linear-gradient(135deg, #f0f6fa, #e8f2f8)' } },
+
+  // === 新增奖品 ===
+  // 传说补充
+  { id: 'gacha_desert_rose', name: '沙漠玫瑰', icon: '🏜️', category: 'theme', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #d4a090, #c89080, #e0b0a0)', accent: '#d4a090', lightBg: 'linear-gradient(135deg, #faf4f0, #faf0ec)' } },
+  { id: 'gacha_cosmos_echo', name: '宇宙回响', icon: '🔊', category: 'sound', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { sound: 'space' } },
+  { id: 'gacha_ink_dragon', name: '墨龙框', icon: '🐉', category: 'frame', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { style: 'solid', color: '#2a2a2a', width: 5, bg: '#f8f4f0', titleColor: '#1a1a1a', textColor: '#444', statDotColors: ['#2a2a2a','#555','#888','#2a2a2a'], progressColors: ['#2a2a2a','#666'], weekDotColor: '#444', sloganColor: '#aaa', dividerColor: '#f0ece8' } },
+  { id: 'gacha_legend_quote', name: '千古绝唱语录', icon: '📜', category: 'quote', type: 'collectible', rarity: 'legendary', source: 'gacha', data: { quotes: [
+    '大江东去，浪淘尽，千古风流人物', '人生自古谁无死，留取丹心照汗青',
+    '落霞与孤鹜齐飞，秋水共长天一色', '先天下之忧而忧，后天下之乐而乐',
+    '路漫漫其修远兮，吾将上下而求索', '长太息以掩涕兮，哀民生之多艰',
+    '举世皆浊我独清，众人皆醉我独醒', '会当凌绝顶，一览众山小',
+    '不畏浮云遮望眼，自缘身在最高层', '沉舟侧畔千帆过，病树前头万木春',
+    '山重水复疑无路，柳暗花明又一村', '海日生残夜，江春入旧年',
+    '大漠孤烟直，长河落日圆', '明月松间照，清泉石上流',
+    '采菊东篱下，悠然见南山', '天生我材必有用，千金散尽还复来',
+    '安得广厦千万间，大庇天下寒士俱欢颜', '出师未捷身先死，长使英雄泪满襟',
+    '三十功名尘与土，八千里路云和月', '壮志饥餐胡虏肉，笑谈渴饮匈奴血'
+  ] } },
+
+  // 史诗补充
+  { id: 'gacha_polar_night', name: '极夜', icon: '🌑', category: 'theme', type: 'equipable', rarity: 'epic', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #1a1a2e, #2a2a4e, #1a2a3e)', accent: '#4a5a8a', lightBg: 'linear-gradient(135deg, #1a1a2e, #2a2a4e)' } },
+  { id: 'gacha_cyber_blue', name: '赛博蓝', icon: '💎', category: 'theme', type: 'equipable', rarity: 'epic', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #0066cc, #0099ff, #00ccff)', accent: '#0099ff', lightBg: 'linear-gradient(135deg, #f0f8ff, #e8f4ff)' } },
+  { id: 'gacha_crystal_harp', name: '水晶竖琴', icon: '🎵', category: 'sound', type: 'equipable', rarity: 'epic', source: 'gacha', data: { sound: 'crystal' } },
+  { id: 'gacha_ink_frame', name: '水墨边框', icon: '🖌️', category: 'frame', type: 'equipable', rarity: 'epic', source: 'gacha', data: { style: 'solid', color: '#555', width: 3, bg: '#f5f0e8', titleColor: '#333', textColor: '#666', statDotColors: ['#555','#777','#999','#555'], progressColors: ['#555','#888'], weekDotColor: '#666', sloganColor: '#aaa', dividerColor: '#ece8e0' } },
+  { id: 'gacha_movie_quote', name: '电影台词语录', icon: '🎬', category: 'quote', type: 'collectible', rarity: 'epic', source: 'gacha', data: { quotes: [
+    '生活就像一盒巧克力，你永远不知道下一颗是什么味道',
+    '人生不能像做菜，把所有的料都准备好了才下锅',
+    '如果不能骄傲地活着，我选择死去',
+    '做人如果没有梦想，跟咸鱼有什么分别',
+    '不要温和地走进那个良夜',
+    '你若遇上麻烦，不要逞强，你就跑，远远跑开',
+    '每一天，每一秒，你所做的决定都会改变你的人生',
+    '有时候你只需要放弃，才能继续前进',
+    '我们注定要失去我们所爱的人，不然怎么知道他们对我们有多重要',
+    '希望是好事，也许是人间至善，而美好的事永不消逝',
+    '不管前方的路有多苦，只要走的方向正确，不管多么崎岖不平，都比站在原地更接近幸福',
+    '世界上只有一种英雄主义，就是看清生活的真相之后依然热爱生活',
+    '人生就像一场舞会，教会你最初舞步的人却未必能陪你走到散场',
+    '曾经有一份真诚的爱情放在我面前，我没有珍惜',
+    '我猜中了开头，却猜不到这结局',
+    '如果你有梦想的话，就要去捍卫它',
+    '星星在哪里都是很亮的，就看你有没有抬头去看它们',
+    '不要忘记你的梦想，别人做不到的，你不一定做不到',
+    '我觉得生命是一份礼物，我不想浪费它',
+    '恐惧让你沦为囚犯，希望让你重获自由'
+  ] } },
+
+  // 稀有补充
+  { id: 'gacha_mint_frost', name: '薄荷霜', icon: '🌿', category: 'theme', type: 'equipable', rarity: 'rare', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #88d8b0, #70c8a0)', accent: '#88d8b0', lightBg: 'linear-gradient(135deg, #f0faf6, #e8f8f0)' } },
+  { id: 'gacha_amber', name: '琥珀', icon: '🔶', category: 'theme', type: 'equipable', rarity: 'rare', source: 'gacha', data: { gradient: 'linear-gradient(135deg, #d4a060, #c89050)', accent: '#d4a060', lightBg: 'linear-gradient(135deg, #faf6ee, #faf2e6)' } },
+  { id: 'gacha_smoke', name: '烟雾', icon: '💨', category: 'effect', type: 'equipable', rarity: 'rare', source: 'gacha', data: { animation: 'galaxy' } },
+  { id: 'gacha_petal', name: '花瓣雨', icon: '🌺', category: 'effect', type: 'equipable', rarity: 'rare', source: 'gacha', data: { animation: 'sakura' } },
+  { id: 'gacha_vine_frame', name: '藤蔓边框', icon: '🌿', category: 'frame', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'dashed', color: '#6a9a6a', width: 3, bg: '#f4f8f0', titleColor: '#4a7a4a', textColor: '#5a8a5a', statDotColors: ['#6a9a6a','#8ab88a','#5a8a5a','#6a9a6a'], progressColors: ['#6a9a6a','#8ab88a'], weekDotColor: '#6a9a6a', sloganColor: '#8ab88a', dividerColor: '#ecf4ec' } },
+  { id: 'gacha_electronic', name: '电子音效', icon: '🎛️', category: 'sound', type: 'equipable', rarity: 'rare', source: 'gacha', data: { sound: 'pixel' } },
+  { id: 'gacha_ancient_poem', name: '古诗词语录', icon: '📖', category: 'quote', type: 'collectible', rarity: 'rare', source: 'gacha', data: { quotes: [
+    '春眠不觉晓，处处闻啼鸟', '床前明月光，疑是地上霜',
+    '白日依山尽，黄河入海流', '欲穷千里目，更上一层楼',
+    '千山鸟飞绝，万径人踪灭', '孤舟蓑笠翁，独钓寒江雪',
+    '红豆生南国，春来发几枝', '愿君多采撷，此物最相思',
+    '松下问童子，言师采药去', '只在此山中，云深不知处',
+    '独坐幽篁里，弹琴复长啸', '深林人不知，明月来相照',
+    '空山新雨后，天气晚来秋', '明月松间照，清泉石上流',
+    '人闲桂花落，夜静春山空', '月出惊山鸟，时鸣春涧中',
+    '君自故乡来，应知故乡事', '来日绮窗前，寒梅著花未',
+    '移舟泊烟渚，日暮客愁新', '野旷天低树，江清月近人'
+  ] } },
+
+  // 日历样式（抽奖独占）
+  { id: 'gacha_cal_nebula', name: '星云日历', icon: '🌌', category: 'calendar', type: 'equipable', rarity: 'epic', source: 'gacha', data: { style: 'starry' } },
+  { id: 'gacha_cal_cherry_blossom', name: '花见日历', icon: '🌸', category: 'calendar', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'spring' } },
+  { id: 'gacha_cal_misty', name: '雾雨日历', icon: '🌫️', category: 'calendar', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'rain' } },
+  { id: 'gacha_cal_golden', name: '金秋日历', icon: '🍁', category: 'calendar', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'autumn' } },
+
+  // 更多音效
+  { id: 'gacha_harp', name: '竖琴', icon: '🎵', category: 'sound', type: 'equipable', rarity: 'epic', source: 'gacha', data: { sound: 'piano' } },
+  { id: 'gacha_wind_chime', name: '铜铃', icon: '🔔', category: 'sound', type: 'equipable', rarity: 'rare', source: 'gacha', data: { sound: 'chime' } },
+  { id: 'gacha_drum_roll', name: '战鼓', icon: '🥁', category: 'sound', type: 'equipable', rarity: 'rare', source: 'gacha', data: { sound: 'drum' } },
+
+  // 更多特效
+  { id: 'gacha_comet_trail', name: '彗星尾迹', icon: '☄️', category: 'effect', type: 'equipable', rarity: 'epic', source: 'gacha', data: { animation: 'comet' } },
+  { id: 'gacha_aurora_dance', name: '极光舞', icon: '🌈', category: 'effect', type: 'equipable', rarity: 'legendary', source: 'gacha', data: { animation: 'aurora' } },
+
+  // 更多边框
+  { id: 'gacha_coral_frame', name: '珊瑚框', icon: '🐚', category: 'frame', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'solid', color: '#e8836b', width: 3, bg: '#fef2ee', titleColor: '#c85a44', textColor: '#d06a54', statDotColors: ['#e8836b','#f0a090','#e87060','#e8836b'], progressColors: ['#e8836b','#f0a090'], weekDotColor: '#e87060', sloganColor: '#f0a090', dividerColor: '#fde8e0' } },
+  { id: 'gacha_frost_frame', name: '霜花框', icon: '❄️', category: 'frame', type: 'equipable', rarity: 'rare', source: 'gacha', data: { style: 'solid', color: '#a0c8e0', width: 3, bg: '#f0f8ff', titleColor: '#6090b0', textColor: '#80a8c0', statDotColors: ['#a0c8e0','#b0d8f0','#90b8d0','#a0c8e0'], progressColors: ['#a0c8e0','#b0d8f0'], weekDotColor: '#90b8d0', sloganColor: '#b0d8f0', dividerColor: '#e0f0ff' } },
+]
+
+// 普通奖品（金币返还）
+export const gachaNormalRewards = [
+  { type: 'coins', amount: 30, name: '30 金币', icon: '🪙' },
+  { type: 'coins', amount: 50, name: '50 金币', icon: '💰' },
+  { type: 'coins', amount: 100, name: '100 金币', icon: '💰' },
+]
+
+// ===== 高级抽奖池 (500币/抽，概率更高，独占奖品) =====
+export const premiumGachaPool = [
+  // 传说 (3%)
+  { id: 'pgacha_dragon', name: '龙焰主题', icon: '🐉', category: 'theme', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #c8a080, #b89878, #d4a8b0)', accent: '#c8a080', lightBg: 'linear-gradient(135deg, #faf4f0, #faf6f4)' } },
+  { id: 'pgacha_phoenix', name: '凤凰涅槃', icon: '🔶', category: 'effect', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { animation: 'fire' } },
+  { id: 'pgacha_cosmos', name: '宇宙之心', icon: '💠', category: 'frame', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { style: 'solid', color: '#80c8d0', width: 5, bg: '#2a2840', titleColor: '#80c8d0', textColor: '#b0d8e0', statDotColors: ['#80c8d0','#c0a0b0','#c8d8a0','#80c8d0'], progressColors: ['#80c8d0','#c0a0b0'], weekDotColor: '#80c8d0', sloganColor: '#888', dividerColor: '#3a3858' } },
+
+  // 史诗 (12%)
+  { id: 'pgacha_void', name: '虚空', icon: '🕳️', category: 'theme', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #3a3a48, #4a4a58)', accent: '#8a8a98', lightBg: 'linear-gradient(135deg, #3a3a48, #4a4a58)' } },
+  { id: 'pgacha_matrix', name: '矩阵', icon: '🔢', category: 'effect', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { animation: 'stars' } },
+  { id: 'pgacha_royal', name: '皇家金', icon: '👑', category: 'frame', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { style: 'solid', color: '#c8b870', width: 5, bg: '#2a2a3e', titleColor: '#c8b870', textColor: '#d8d0a0', statDotColors: ['#c8b870','#c0a0b0','#80c8d0','#c8b870'], progressColors: ['#c8b870','#c0a0b0'], weekDotColor: '#c8b870', sloganColor: '#888', dividerColor: '#3a3a50' } },
+  { id: 'pgacha_quote_philosophy', name: '哲学语录', icon: '🧠', category: 'quote', type: 'collectible', rarity: 'epic', source: 'premium_gacha', data: { quotes: [
+    '我思故我在', '存在先于本质', '人是被判定为自由的', '他人即地狱',
+    '知识就是力量', '认识你自己', '未经审视的人生不值得过', '万物皆流，无物常驻',
+    '道可道，非常道', '上善若水', '知足不辱，知止不殆', '大音希声，大象无形',
+    '色即是空，空即是色', '菩提本无树，明镜亦非台', '一切有为法，如梦幻泡影',
+    '人生天地间，若白驹过隙', '天地不仁，以万物为刍狗', '祸兮福所倚，福兮祸所伏',
+    '千里之行，始于足下', '知人者智，自知者明'
+  ] } },
+
+  // 稀有 (25%)
+  { id: 'pgacha_sakura_pink', name: '樱粉', icon: '🌸', category: 'theme', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #d4b898, #c8a888, #d4a8b8)', accent: '#d4a8b8', lightBg: 'linear-gradient(135deg, #faf0f4, #faf4f0)' } },
+  { id: 'pgacha_ocean_deep', name: '深海', icon: '🐋', category: 'theme', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #6a9ab0, #5888a0)', accent: '#6a9ab0', lightBg: 'linear-gradient(135deg, #f0f6fa, #e8f2f8)' } },
+  { id: 'pgacha_sparkle', name: '闪耀', icon: '✨', category: 'effect', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { animation: 'stardust' } },
+  { id: 'pgacha_flame_frame', name: '烈焰框', icon: '🔥', category: 'frame', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { style: 'solid', color: '#c8a080', width: 4, bg: '#2a2020', titleColor: '#c8a080', textColor: '#d8b8a0', statDotColors: ['#c8a080','#b8a080','#c8b080','#c8a080'], progressColors: ['#c8a080','#b8a080'], weekDotColor: '#c8a080', sloganColor: '#888', dividerColor: '#3a3030' } },
+  { id: 'pgacha_quote_poetry', name: '现代诗语录', icon: '🖊️', category: 'quote', type: 'collectible', rarity: 'rare', source: 'premium_gacha', data: { quotes: [
+    '你站在桥上看风景，看风景的人在楼上看你', '黑夜给了我黑色的眼睛，我却用它寻找光明',
+    '从明天起，做一个幸福的人', '面朝大海，春暖花开', '卑鄙是卑鄙者的通行证，高尚是高尚者的墓志铭',
+    '我有一所房子，面朝大海，春暖花开', '你一会看我，一会看云，我觉得你看我时很远，看云时很近',
+    '草在结它的种子，风在摇它的叶子，我们站着，不说话，就十分美好',
+    '人生如逆旅，我亦是行人', '此去经年，应是良辰好景虚设',
+    '众里寻他千百度，蓦然回首，那人却在灯火阑珊处', '问君能有几多愁，恰似一江春水向东流',
+    '抽刀断水水更流，举杯消愁愁更愁', '天生我材必有用，千金散尽还复来',
+    '长风破浪会有时，直挂云帆济沧海', '安能摧眉折腰事权贵，使我不得开心颜',
+    '人生得意须尽欢，莫使金樽空对月', '今朝有酒今朝醉，明日愁来明日愁',
+    '春风得意马蹄疾，一日看尽长安花', '海内存知己，天涯若比邻'
+  ] } },
+
+  // === 新增奖品 ===
+  // 传说补充
+  { id: 'pgacha_phoenix_theme', name: '凤凰主题', icon: '🔶', category: 'theme', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #ff6b35, #f7931e, #ffd700)', accent: '#ff6b35', lightBg: 'linear-gradient(135deg, #fff8f0, #fff4e6)' } },
+  { id: 'pgacha_galaxy_theme', name: '星河主题', icon: '🌌', category: 'theme', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', accent: '#6a6aff', lightBg: 'linear-gradient(135deg, #0f0c29, #302b63)' } },
+  { id: 'pgacha_ancient_quote', name: '千古名句语录', icon: '📜', category: 'quote', type: 'collectible', rarity: 'legendary', source: 'premium_gacha', data: { quotes: [
+    '关关雎鸠，在河之洲。窈窕淑女，君子好逑',
+    '桃之夭夭，灼灼其华。之子于归，宜其室家',
+    '青青子衿，悠悠我心。纵我不往，子宁不嗣音',
+    '死生契阔，与子成说。执子之手，与子偕老',
+    '知我者，谓我心忧。不知我者，谓我何求',
+    '昔我往矣，杨柳依依。今我来思，雨雪霏霏',
+    '蒹葭苍苍，白露为霜。所谓伊人，在水一方',
+    '呦呦鹿鸣，食野之苹。我有嘉宾，鼓瑟吹笙',
+    '对酒当歌，人生几何。譬如朝露，去日苦多',
+    '山不厌高，海不厌深。周公吐哺，天下归心',
+    '老骥伏枥，志在千里。烈士暮年，壮心不已',
+    '捐躯赴国难，视死忽如归',
+    '本是同根生，相煎何太急',
+    '盈盈一水间，脉脉不得语',
+    '少壮不努力，老大徒伤悲',
+    '生年不满百，常怀千岁忧',
+    '迢迢牵牛星，皎皎河汉女',
+    '采菊东篱下，悠然见南山',
+    '刑天舞干戚，猛志固常在',
+    '盛年不重来，一日难再晨'
+  ] } },
+
+  // 史诗补充
+  { id: 'pgacha_glacier', name: '冰川', icon: '🏔️', category: 'theme', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #a0c8e0, #80b0d0, #60a0c0)', accent: '#80b0d0', lightBg: 'linear-gradient(135deg, #f0f8ff, #e8f4ff)' } },
+  { id: 'pgacha_aurora_theme', name: '极光主题', icon: '🌈', category: 'theme', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #00c9ff, #92fe9d, #00c9ff)', accent: '#00c9ff', lightBg: 'linear-gradient(135deg, #f0ffff, #f0fff4)' } },
+  { id: 'pgacha_thunder', name: '雷电特效', icon: '⚡', category: 'effect', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { animation: 'lightning' } },
+  { id: 'pgacha_jade_frame', name: '翡翠边框', icon: '💚', category: 'frame', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { style: 'solid', color: '#2d8a5e', width: 4, bg: '#f0faf4', titleColor: '#1a6b3a', textColor: '#2d8a5e', statDotColors: ['#2d8a5e','#4ade80','#22c55e','#2d8a5e'], progressColors: ['#2d8a5e','#4ade80'], weekDotColor: '#22c55e', sloganColor: '#86efac', dividerColor: '#dcfce7' } },
+  { id: 'pgacha_cinema_quote', name: '经典台词语录', icon: '🎭', category: 'quote', type: 'collectible', rarity: 'epic', source: 'premium_gacha', data: { quotes: [
+    '我命由我不由天', '世上无难事，只怕有心人',
+    '做人要厚道', '我选择我喜欢',
+    '21世纪什么最贵？人才！', '你能不能严肃点',
+    '我不是随便的人，我随便起来不是人',
+    '人生如戏，全靠演技', '出来混，迟早要还的',
+    '我读书少，你不要骗我', '念念不忘，必有回响',
+    '不疯魔不成活', '人间不值得',
+    '我就是我，颜色不一样的烟火',
+    '你未看此花时，此花与汝同归于寂',
+    '万物皆有裂痕，那是光照进来的地方',
+    '我们仰望同一片天空，却看着不同的地方',
+    '不管你曾经被伤害得有多深，总会有一个人的出现，让你原谅之前生活对你所有的刁难',
+    '有些事现在不做，一辈子都不会做了',
+    '不管去哪，不管什么天气，永远带上自己的小太阳'
+  ] } },
+
+  // 稀有补充
+  { id: 'pgacha_sunrise', name: '日出', icon: '🌅', category: 'theme', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #ff9a56, #ff6b6b)', accent: '#ff9a56', lightBg: 'linear-gradient(135deg, #fff8f0, #fff0ec)' } },
+  { id: 'pgacha_storm', name: '风暴', icon: '🌪️', category: 'theme', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { gradient: 'linear-gradient(135deg, #4a5568, #2d3748)', accent: '#718096', lightBg: 'linear-gradient(135deg, #f7f8fa, #edf0f4)' } },
+  { id: 'pgacha_ripple', name: '波纹特效', icon: '🌊', category: 'effect', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { animation: 'bubble' } },
+  { id: 'pgacha_wood_frame', name: '木纹边框', icon: '🪵', category: 'frame', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { style: 'solid', color: '#8b6914', width: 4, bg: '#faf6ee', titleColor: '#6b4c14', textColor: '#8b6914', statDotColors: ['#8b6914','#a08030','#c0a050','#8b6914'], progressColors: ['#8b6914','#c0a050'], weekDotColor: '#a08030', sloganColor: '#c0a050', dividerColor: '#f4ece0' } },
+  { id: 'pgacha_rose_gold_frame', name: '玫瑰金框', icon: '🌹', category: 'frame', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { style: 'solid', color: '#b76e79', width: 4, bg: '#fdf2f4', titleColor: '#a05a64', textColor: '#b76e79', statDotColors: ['#b76e79','#d4a0a8','#c88890','#b76e79'], progressColors: ['#b76e79','#d4a0a8'], weekDotColor: '#c88890', sloganColor: '#d4a0a8', dividerColor: '#f8eceef0' } },
+  { id: 'pgacha_anime_quote', name: '动漫台词语录', icon: '🎌', category: 'quote', type: 'collectible', rarity: 'rare', source: 'premium_gacha', data: { quotes: [
+    '我是要成为海贼王的男人！', '真相永远只有一个',
+    '我要代表月亮消灭你！', '人的梦想，是不会终结的！',
+    '不到最后绝不轻言放弃', '我可是要成为火影的男人',
+    '世界上没有什么是永恒的', '不要为自己的失败找借口',
+    '只要活着就一定会遇上好事', '能哭的地方只有厕所和爸爸的怀里',
+    '不管夜晚多么黑暗，黎明总会到来', '就算被全世界否定，我也不会否定自己',
+    '不相信自己的人，连努力的价值都没有', '与其担心未来，不如现在好好努力',
+    '所谓真正的伙伴，就是能一起犯傻的人', '不是因为看到了希望才坚持，而是坚持了才看到希望',
+    '今天的我，比昨天更强', '即使是最深的绝望，也有希望的曙光',
+    '所谓成长，就是不断地与过去的自己告别', '活着本身就是一种幸福'
+  ] } },
+
+  // 日历样式（高级抽奖独占）
+  { id: 'pgacha_cal_galaxy', name: '银河日历', icon: '🪐', category: 'calendar', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { style: 'starry' } },
+  { id: 'pgacha_cal_forest', name: '森林日历', icon: '🌲', category: 'calendar', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { style: 'classic' } },
+  { id: 'pgacha_cal_snow', name: '雪国日历', icon: '❄️', category: 'calendar', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { style: 'winter' } },
+
+  // 更多音效
+  { id: 'pgacha_organ', name: '管风琴', icon: '🎹', category: 'sound', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { sound: 'piano' } },
+  { id: 'pgacha_rain_sound', name: '雨声', icon: '🌧️', category: 'sound', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { sound: 'ocean' } },
+  { id: 'pgacha_guitar_solo', name: '吉他独奏', icon: '🎸', category: 'sound', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { sound: 'guitar' } },
+
+  // 更多特效
+  { id: 'pgacha_galaxy_spin', name: '银河旋转', icon: '🌀', category: 'effect', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { animation: 'galaxy' } },
+  { id: 'pgacha_magic', name: '魔法阵', icon: '🔯', category: 'effect', type: 'equipable', rarity: 'legendary', source: 'premium_gacha', data: { animation: 'magic_circle' } },
+  { id: 'pgacha_explosion', name: '爆裂', icon: '💥', category: 'effect', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { animation: 'explosion' } },
+
+  // 更多边框
+  { id: 'pgacha_silver_frame', name: '白银框', icon: '🩶', category: 'frame', type: 'equipable', rarity: 'epic', source: 'premium_gacha', data: { style: 'solid', color: '#9ca3af', width: 4, bg: '#f8f9fa', titleColor: '#6b7280', textColor: '#9ca3af', statDotColors: ['#9ca3af','#d1d5db','#6b7280','#9ca3af'], progressColors: ['#9ca3af','#d1d5db'], weekDotColor: '#9ca3af', sloganColor: '#d1d5db', dividerColor: '#f3f4f6' } },
+  { id: 'pgacha_cherry_wood_frame', name: '红木框', icon: '🪵', category: 'frame', type: 'equipable', rarity: 'rare', source: 'premium_gacha', data: { style: 'solid', color: '#8b2500', width: 4, bg: '#faf0e6', titleColor: '#6b1500', textColor: '#8b3500', statDotColors: ['#8b2500','#a04030','#c06040','#8b2500'], progressColors: ['#8b2500','#c06040'], weekDotColor: '#a04030', sloganColor: '#c06040', dividerColor: '#f0e0d0' } },
+]

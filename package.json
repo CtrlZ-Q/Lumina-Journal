@@ -1,0 +1,54 @@
+{
+  "name": "dino-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "🌅 逐光手帐 - 每日打卡桌面应用",
+  "license": "GPL-3.0",
+  "keywords": ["electron", "vue", "daily-checkin", "habit-tracker", "desktop-app"],
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"vite --port 5180 --strictPort --no-open\" \"wait-on http://localhost:5180 && electron .\"",
+    "build": "vite build && electron-builder --win",
+    "build:dir": "vite build && electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "com.dino.app",
+    "productName": "逐光手帐",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "逐光手帐"
+    }
+  },
+  "dependencies": {
+    "pinia": "^3.0.4",
+    "vue": "^3.5.34"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.6",
+    "concurrently": "^9.2.3",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "vite": "^8.0.12",
+    "wait-on": "^8.0.5"
+  }
+}

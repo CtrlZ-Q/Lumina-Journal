@@ -1,0 +1,101 @@
+/* ============================================
+   全局基础样式 — 逐光手帐 · Premium Edition
+   ============================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --c-accent: #e85d75;
+  --c-accent-light: #ff8fa0;
+  --c-gold: #d4a853;
+  --c-gold-light: #f0d48a;
+  --c-surface: rgba(255,255,255,0.82);
+  --c-surface-hover: rgba(255,255,255,0.95);
+  --c-text: #1a1a2e;
+  --c-text-secondary: #7a7a8e;
+  --c-text-muted: #b0b0c0;
+  --c-border: rgba(0,0,0,0.05);
+  --c-shadow: rgba(0,0,0,0.06);
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --font-display: 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  --font-body: 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body {
+  font-family: var(--font-body);
+  background: linear-gradient(160deg, #f8f6f3 0%, #f3efe9 40%, #ede8e2 100%);
+  color: var(--c-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  overscroll-behavior: none;
+  font-size: 14px;
+}
+
+* { scroll-behavior: smooth; }
+
+::selection {
+  background: rgba(232, 93, 117, 0.12);
+  color: inherit;
+}
+
+/* 滚动条 — 精致细窄 */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.08);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.15); }
+
+/* 通用过渡 */
+.transition-smooth { transition: all var(--transition-smooth); }
+
+/* 按钮重置 */
+button {
+  font-family: inherit;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 输入框重置 */
+input, textarea {
+  font-family: inherit;
+  outline: none;
+}
+
+/* 卡片通用样式 */
+.card {
+  background: var(--c-surface);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--c-border);
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.02),
+    0 4px 16px rgba(0,0,0,0.03);
+  transition: box-shadow var(--transition-smooth), transform var(--transition-smooth);
+}
+.card:hover {
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.04),
+    0 8px 32px rgba(0,0,0,0.05);
+}
+
+/* 玻璃质感 */
+.glass {
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid rgba(255,255,255,0.5);
+}
