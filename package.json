@@ -1,7 +1,7 @@
 {
   "name": "dino-app",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "🌅 逐光手帐 - 每日打卡桌面应用",
   "license": "GPL-3.0",
   "keywords": ["electron", "vue", "daily-checkin", "habit-tracker", "desktop-app"],
