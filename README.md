@@ -26,7 +26,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-username/dino-app.git
+git clone https://github.com/CtrlZ-Q/dino-app.git
 cd dino-app
 
 # 安装依赖
