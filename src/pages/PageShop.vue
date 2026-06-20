@@ -9,6 +9,7 @@ const gameStore = useGameStore()
 const shop = useShopStore()
 const emit = defineEmits(['show-toast'])
 
+const shopCategories = categories.filter(c => c.key !== 'title')
 const activeCat = ref('all')
 const showPurchase = ref(false)
 const purchaseItem = ref(null)
@@ -276,10 +277,10 @@ function handleUse(item) {
   // 被动道具只显示信息，不消耗
   if (passiveItems.includes(propKey)) {
     const msgs = {
-      lucky: `🍀 持有 ×${shop.consumables.lucky}，签到时自动+30~80币`,
+      lucky: `🍀 持有 ×${shop.consumables.lucky}，签到时自动+0~50币`,
       double_coin: `✨ 持有 ×${shop.consumables.double_coin}，签到时自动金币×2`,
       triple_coin: `💎 持有 ×${shop.consumables.triple_coin}，签到时自动金币×3`,
-      lucky_star: `⭐ 持有 ×${shop.consumables.lucky_star}，签到时自动+50~150币`,
+      lucky_star: `⭐ 持有 ×${shop.consumables.lucky_star}，签到时自动+0~100币`,
       magnet: `🧲 持有 ×${shop.consumables.magnet}，签到时自动金币×5`,
     }
     purchaseItem.value = { ...item, resultDesc: msgs[propKey], isResult: true }
@@ -388,7 +389,7 @@ function getRarityLabel(rarity) {
     <!-- 分类标签栏 -->
     <div class="shop-tabs">
       <button
-        v-for="cat in categories"
+        v-for="cat in shopCategories"
         :key="cat.key"
         class="tab-btn"
         :class="{ active: activeCat === cat.key }"
@@ -417,10 +418,10 @@ function getRarityLabel(rarity) {
 
           <div class="gacha-btns">
             <button class="gacha-btn single" @click="handlePullGacha(1)">
-              💰 50 单抽
+              💰 150 单抽
             </button>
             <button class="gacha-btn multi" @click="handlePullGacha(5)">
-              💰 220 五连
+              💰 650 五连
             </button>
           </div>
 
@@ -468,10 +469,10 @@ function getRarityLabel(rarity) {
 
           <div class="gacha-btns">
             <button class="gacha-btn single" @click="handlePullPremiumGacha(1)">
-              💰 500 单抽
+              💰 1500 单抽
             </button>
             <button class="gacha-btn multi" @click="handlePullPremiumGacha(5)">
-              💰 2200 五连
+              💰 6500 五连
             </button>
           </div>
 
@@ -841,7 +842,7 @@ function getRarityLabel(rarity) {
 .shop-title {
   font-size: 20px;
   font-weight: 800;
-  color: #1a1a1a;
+  color: #4a4a56;
 }
 
 .shop-balance {
@@ -901,7 +902,7 @@ function getRarityLabel(rarity) {
 .category-title {
   font-size: 15px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #4a4a56;
 }
 
 .category-count {
@@ -938,11 +939,11 @@ function getRarityLabel(rarity) {
 .item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 
 .item-card.buyable { border-color: #e5e5e5; }
-.item-card.owned { border-color: #10b981; background: #f0fdf4; }
+.item-card.owned { border-color: #8fae9a; background: #e8ece8; }
 .item-card.equipped { border-color: #f59e0b; background: #fffbeb; }
 
 .card-icon { font-size: 28px; margin-bottom: 6px; }
-.card-name { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.card-name { font-size: 13px; font-weight: 700; color: #5a5a66; margin-bottom: 4px; }
 .card-desc { font-size: 11px; color: #e67e22; margin-bottom: 6px; line-height: 1.3; min-height: 14px; }
 
 .card-action {
@@ -959,7 +960,7 @@ function getRarityLabel(rarity) {
 }
 
 .card-action.owned {
-  background: #10b981;
+  background: #8fae9a;
   color: #fff;
 }
 
@@ -1053,8 +1054,8 @@ function getRarityLabel(rarity) {
 /* ===== 限时商店 ===== */
 .limited-panel { padding: 20px 0; }
 .limited-header { margin-bottom: 20px; }
-.limited-title { font-size: 18px; font-weight: 800; color: #1a1a1a; }
-.limited-sub { font-size: 14px; color: #999; margin-top: 4px; }
+.limited-title { font-size: 18px; font-weight: 800; color: #4a4a56; }
+.limited-sub { font-size: 14px; color: #888; margin-top: 4px; }
 .limited-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .limited-card {
   background: #fff;
@@ -1081,11 +1082,11 @@ function getRarityLabel(rarity) {
   border-radius: 8px;
 }
 .limited-icon { font-size: 32px; margin-bottom: 8px; }
-.limited-name { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 8px; }
+.limited-name { font-size: 14px; font-weight: 700; color: #5a5a66; margin-bottom: 8px; }
 .limited-prices { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.limited-original { font-size: 13px; color: #ccc; text-decoration: line-through; }
+.limited-original { font-size: 13px; color: #999; text-decoration: line-through; }
 .limited-now { font-size: 15px; font-weight: 800; color: #ef4444; }
-.limited-owned { font-size: 13px; color: #10b981; font-weight: 700; margin-top: 6px; }
+.limited-owned { font-size: 13px; color: #8fae9a; font-weight: 700; margin-top: 6px; }
 
 /* ===== 高级抽奖 ===== */
 .gacha-bg.premium {
@@ -1095,7 +1096,7 @@ function getRarityLabel(rarity) {
 /* ===== 称号系统 ===== */
 .title-panel { padding: 20px 0; }
 .title-header { margin-bottom: 20px; }
-.title-current { font-size: 16px; font-weight: 700; color: #1a1a1a; padding: 12px 16px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border-radius: 12px; border: 1px solid #fde68a; }
+.title-current { font-size: 16px; font-weight: 700; color: #4a4a56; padding: 12px 16px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border-radius: 12px; border: 1px solid #fde68a; }
 .title-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .title-card {
   background: #fff;
@@ -1108,8 +1109,8 @@ function getRarityLabel(rarity) {
 .title-card.owned { border-color: #fbbf24; background: #fffbeb; }
 .title-card.equipped { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
 .title-icon { font-size: 28px; margin-bottom: 6px; }
-.title-name { font-size: 14px; font-weight: 800; color: #333; margin-bottom: 4px; }
-.title-desc { font-size: 13px; color: #999; margin-bottom: 8px; }
+.title-name { font-size: 14px; font-weight: 800; color: #5a5a66; margin-bottom: 4px; }
+.title-desc { font-size: 13px; color: #888; margin-bottom: 8px; }
 .title-actions { display: flex; gap: 6px; justify-content: center; }
 .title-equip-btn, .title-unequip-btn, .title-buy-btn {
   padding: 6px 14px;
@@ -1123,11 +1124,11 @@ function getRarityLabel(rarity) {
 .title-equip-btn { background: linear-gradient(135deg, #f59e0b, #f97316); color: #fff; }
 .title-unequip-btn { background: #e5e5e5; color: #666; }
 .title-buy-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
-.title-locked { font-size: 13px; color: #ccc; }
+.title-locked { font-size: 13px; color: #999; }
 
 /* ===== 我的物品 ===== */
 .mine-section { display: flex; flex-direction: column; gap: 24px; }
-.mine-group-title { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.mine-group-title { font-size: 15px; font-weight: 700; color: #4a4a56; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .mine-group-count { font-size: 13px; font-weight: 600; color: #667eea; background: linear-gradient(135deg, #eef2ff, #f5f3ff); padding: 2px 10px; border-radius: 10px; }
 
 /* 语录类别选择 */
@@ -1151,7 +1152,7 @@ function getRarityLabel(rarity) {
   background: linear-gradient(135deg, #eef2ff, #f5f3ff);
 }
 .quote-cat-icon { font-size: 18px; }
-.quote-cat-name { font-weight: 600; color: #333; }
+.quote-cat-name { font-weight: 600; color: #5a5a66; }
 .quote-cat-btn.active .quote-cat-name { color: #667eea; }
 .quote-cat-actions { display: flex; gap: 8px; }
 .quote-action-btn {
@@ -1205,7 +1206,7 @@ function getRarityLabel(rarity) {
 }
 
 .purchase-icon { font-size: 48px; margin-bottom: 8px; }
-.purchase-name { font-size: 18px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+.purchase-name { font-size: 18px; font-weight: 800; color: #4a4a56; margin-bottom: 4px; }
 .purchase-cat { font-size: 13px; color: #888; margin-bottom: 12px; }
 
 .purchase-desc {
@@ -1222,7 +1223,7 @@ function getRarityLabel(rarity) {
 .result-desc {
   font-size: 16px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #4a4a56;
   background: linear-gradient(135deg, #fffbeb, #fef3c7);
   text-align: center;
 }
@@ -1264,7 +1265,7 @@ function getRarityLabel(rarity) {
 .purchase-owned-badge {
   display: inline-block;
   padding: 6px 20px;
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  background: linear-gradient(135deg, #e8ece8, #dcfce7);
   border: 1px solid #86efac;
   border-radius: 20px;
   font-size: 14px;
@@ -1302,7 +1303,7 @@ function getRarityLabel(rarity) {
 
 .price-val { font-size: 22px; font-weight: 800; color: #d97706; }
 .price-label { font-size: 13px; color: #aaa; margin-top: 2px; }
-.purchase-balance .price-val { color: #1a1a1a; }
+.purchase-balance .price-val { color: #4a4a56; }
 
 .purchase-btns {
   display: flex;
@@ -1379,7 +1380,7 @@ function getRarityLabel(rarity) {
 .gacha-result-title {
   font-size: 20px;
   font-weight: 800;
-  color: #1a1a1a;
+  color: #4a4a56;
   margin-bottom: 20px;
 }
 
@@ -1398,7 +1399,7 @@ function getRarityLabel(rarity) {
 }
 
 .result-icon { font-size: 24px; margin-bottom: 4px; }
-.result-name { font-size: 13px; font-weight: 600; color: #333; }
+.result-name { font-size: 13px; font-weight: 600; color: #5a5a66; }
 .result-rarity { font-size: 12px; font-weight: 700; margin-top: 2px; }
 
 /* ===== 抽奖奖品池预览 ===== */
@@ -1436,11 +1437,11 @@ function getRarityLabel(rarity) {
 }
 
 .preview-item.owned {
-  border-color: #10b981;
-  background: #f0fdf4;
+  border-color: #8fae9a;
+  background: #e8ece8;
 }
 
 .preview-item-icon { font-size: 22px; margin-bottom: 4px; }
 .preview-item-name { font-size: 12px; font-weight: 600; color: #555; }
-.preview-item.owned .preview-item-name { color: #10b981; }
+.preview-item.owned .preview-item-name { color: #8fae9a; }
 </style>

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useGameStore } from '../stores/game'
 import { useShopStore } from '../stores/shop'
 import { moodOptions, getActiveSeasonalEvent } from '../data/seasonalEvents'
+import { isEasterClaimed, markEasterClaimed } from '../composables/easterEgg'
 import { themes } from '../data/themes'
 import CheckinTimeline from '../components/CheckinTimeline.vue'
 import CheckinEffect from '../components/CheckinEffect.vue'
@@ -23,10 +24,14 @@ const selectedMood = ref(null)
 function submitJournal() {
   const text = newJournal.value.trim()
   if (!text) return
-  store.addJournal(text, selectedMood.value)
+  const toasts = store.addJournal(text, selectedMood.value)
   newJournal.value = ''
   selectedMood.value = null
   emit('show-toast', '📝 记录已保存')
+  // 显示日记触发的成就 toast
+  if (toasts && toasts.length > 0) {
+    toasts.forEach((t, i) => setTimeout(() => emit('show-toast', t), (i + 1) * 1500))
+  }
 }
 
 const seasonEvent = computed(() => getActiveSeasonalEvent())
@@ -55,8 +60,7 @@ function checkEasterEggClaimed() {
   const evt = seasonEvent.value
   if (!evt?.easterEgg) { easterEggClaimed.value = true; return }
   const today = new Date()
-  const key = `easter_${evt.id}_${today.getFullYear()}_${today.getMonth()}_${today.getDate()}`
-  easterEggClaimed.value = !!localStorage.getItem(key)
+  easterEggClaimed.value = isEasterClaimed(evt.id, today.getFullYear(), today.getMonth(), today.getDate())
 }
 checkEasterEggClaimed()
 
@@ -71,11 +75,11 @@ function claimEasterEgg() {
   const evt = seasonEvent.value
   if (!evt?.easterEgg || easterEggClaimed.value) return
   const today = new Date()
-  const key = `easter_${evt.id}_${today.getFullYear()}_${today.getMonth()}_${today.getDate()}`
-  localStorage.setItem(key, '1')
+  markEasterClaimed(evt.id, today.getFullYear(), today.getMonth(), today.getDate())
   easterEggClaimed.value = true
   const reward = evt.easterEgg.min + Math.floor(Math.random() * (evt.easterEgg.max - evt.easterEgg.min + 1))
   store.coins += reward
+  store.logCoin(reward, `🥚 ${evt.name}彩蛋`)
   const blessing = evt.freeQuotes[Math.floor(Math.random() * evt.freeQuotes.length)]
   const encourage = encourageLines[Math.floor(Math.random() * encourageLines.length)]
   easterEggResult.value = {
@@ -111,7 +115,7 @@ const pageTitle = computed(() => {
 })
 
 const calendarPageBgs = {
-  classic: 'linear-gradient(135deg, #faf4f6 0%, #faf6f4 50%, #fdf8f6 100%)',
+  classic: 'linear-gradient(135deg, #e5ded4 0%, #e0d9ce 50%, #e5e0d8 100%)',
   autumn: 'linear-gradient(135deg, #faf6ee 0%, #f8f2e4 50%, #f5ecd8 100%)',
   winter: 'linear-gradient(135deg, #f0f4fa 0%, #e8f0f8 50%, #dde8f4 100%)',
   spring: 'linear-gradient(135deg, #faf0f4 0%, #f8eef2 50%, #f5eaf0 100%)',
@@ -169,22 +173,21 @@ function handleCheckin() {
     let finalReward = result
     // 签到增幅道具（50%概率回本）
     if (shop.consumables.magnet > 0) {
-      shop.consumables.magnet--; finalReward = result * 5; store.coins += result * 4
+      shop.consumables.magnet--; const extra = result * 4; store.coins += extra; store.logCoin(extra, '🧲 磁铁×5加成')
     } else if (shop.consumables.triple_coin > 0) {
-      shop.consumables.triple_coin--; finalReward = result * 3; store.coins += result * 2
+      shop.consumables.triple_coin--; const extra = result * 2; store.coins += extra; store.logCoin(extra, '💎 三倍币加成')
     } else if (shop.consumables.double_coin > 0) {
-      shop.consumables.double_coin--; finalReward = result * 2; store.coins += result
+      shop.consumables.double_coin--; const extra = result; store.coins += extra; store.logCoin(extra, '✨ 双倍币加成')
     }
     // 幸运道具（50%概率赚）
     if (shop.consumables.lucky_star > 0) {
-      shop.consumables.lucky_star--; const bonus = Math.floor(Math.random() * 101); store.coins += bonus; finalReward += bonus
+      shop.consumables.lucky_star--; const bonus = Math.floor(Math.random() * 101); store.coins += bonus; finalReward += bonus; store.logCoin(bonus, '⭐ 幸运星')
     } else if (shop.consumables.lucky > 0) {
-      shop.consumables.lucky--; const bonus = Math.floor(Math.random() * 51); store.coins += bonus; finalReward += bonus
+      shop.consumables.lucky--; const bonus = Math.floor(Math.random() * 51); store.coins += bonus; finalReward += bonus; store.logCoin(bonus, '🍀 幸运草')
     }
     const sound = shop.equippedItems.sound
     if (sound) playSound(sound)
     playCheckinEffect(finalReward)
-    store.checkAchievements()
     const toasts = store.popToasts()
     // 隐藏台词检查
     const newDialogues = shop.checkHiddenDialogues()
@@ -277,6 +280,10 @@ const tabs = [
                 <div class="streak-num">{{ store.streakDays }}</div>
                 <div class="streak-label">天连续</div>
               </div>
+            </div>
+            <div v-if="shop.activeTitle" class="hero-title-tag">
+              <span class="hero-title-icon">{{ shop.getTitle(shop.activeTitle)?.icon }}</span>
+              <span class="hero-title-name">{{ shop.getTitle(shop.activeTitle)?.name }}</span>
             </div>
             <div class="hero-quote" :style="{ '--quote-color': quoteColor }">「{{ currentQuote }}」</div>
           </div>
@@ -450,6 +457,18 @@ const tabs = [
   text-shadow: 0 2px 8px rgba(0,0,0,0.15);
   color: var(--quote-color, #e74c3c);
 }
+.hero-title-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-bottom: 14px; padding: 8px 18px;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  border-radius: 24px; border: 1px solid rgba(255,255,255,0.25);
+  font-size: 16px; font-weight: 700; color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  letter-spacing: 1px;
+}
+.hero-title-icon { font-size: 20px; }
+.hero-title-name { font-size: 16px; }
 
 /* ===== 季节活动 ===== */
 .season-card {
@@ -491,7 +510,7 @@ const tabs = [
   display: flex; align-items: center; justify-content: center;
 }
 .modal-box {
-  background: #fff; border-radius: var(--radius-xl);
+  background: #e8e2d8; border-radius: var(--radius-xl);
   text-align: center; box-shadow: 0 32px 80px rgba(0,0,0,0.2);
 }
 .egg-modal { padding: 40px 44px 32px; max-width: 360px; width: 90%; }
@@ -533,8 +552,8 @@ const tabs = [
 .checkin-btn:hover:not(.done) { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(232,93,117,0.35); }
 .checkin-btn:active:not(.done) { transform: translateY(0) scale(0.99); }
 .checkin-btn.done {
-  background: linear-gradient(135deg, #10b981, #34d399);
-  box-shadow: 0 8px 28px rgba(16,185,129,0.25); cursor: default;
+  background: linear-gradient(135deg, #8fae9a, #a5c0ae);
+  box-shadow: 0 8px 28px rgba(143,174,154,0.15); cursor: default;
 }
 .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; z-index: 1; }
 .btn-text { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
@@ -593,11 +612,11 @@ const tabs = [
   border: 1.5px solid rgba(0,0,0,0.06);
   border-radius: var(--radius-sm);
   font-size: 14px; color: var(--c-text);
-  background: rgba(255,255,255,0.7);
+  background: rgba(238,232,222,0.8);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .journal-input:focus {
-  border-color: var(--c-accent); background: #fff;
+  border-color: var(--c-accent); background: rgba(238,232,222,0.95);
   box-shadow: 0 0 0 4px rgba(232,93,117,0.06);
 }
 .journal-input::placeholder { color: var(--c-text-muted); }
@@ -614,18 +633,18 @@ const tabs = [
 .journal-list { padding: 4px 28px 20px; display: flex; flex-direction: column; gap: 6px; }
 .journal-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 16px; background: rgba(255,255,255,0.5);
+  padding: 13px 16px; background: rgba(238,232,222,0.6);
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
 }
-.journal-item:hover { background: rgba(255,255,255,0.85); }
+.journal-item:hover { background: rgba(238,232,222,0.85); }
 .item-mood {
   width: 34px; height: 34px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; flex-shrink: 0;
 }
 .item-body { flex: 1; min-width: 0; }
-.item-text { font-size: 14px; color: #333; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.item-text { font-size: 14px; color: #5a5a66; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .item-time { font-size: 13px; color: var(--c-text-muted); margin-top: 3px; display: block; }
 .item-del {
   width: 30px; height: 30px; border: none; border-radius: 8px;
@@ -642,7 +661,7 @@ const tabs = [
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 4px;
   padding: 8px 14px;
-  background: rgba(255,255,255,0.78);
+  background: rgba(238,232,222,0.85);
   backdrop-filter: blur(24px) saturate(1.3);
   -webkit-backdrop-filter: blur(24px) saturate(1.3);
   border-radius: 28px;

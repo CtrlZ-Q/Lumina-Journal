@@ -33,10 +33,11 @@ const achievementList = [
   { id: 'early_bird', name: '早起打卡', desc: '早上 8 点前打卡', icon: '🐦', reward: 15, tag: '基础' },
   { id: 'night_owl', name: '夜猫子', desc: '晚上 10 点后打卡', icon: '🦉', reward: 15, tag: '基础' },
   { id: 'weekend', name: '周末不松懈', desc: '周末连续打卡 2 天', icon: '🎊', reward: 25, tag: '基础' },
-  { id: 'dialogue_all', name: '知心好友', desc: '收集全部 8 条隐藏台词', icon: '🎭', reward: 100, tag: '进阶' },
+  { id: 'dialogue_all', name: '知心好友', desc: '收集全部 12 条隐藏台词', icon: '🎭', reward: 100, tag: '进阶' },
   { id: 'early_bird_7', name: '晨光行者', desc: '连续 7 天早上 8 点前打卡', icon: '🌅', reward: 100, tag: '挑战' },
   { id: 'early_bird_30', name: '日出之王', desc: '连续 30 天早上 8 点前打卡', icon: '☀️', reward: 500, tag: '传说' },
   { id: 'night_owl_7', name: '暗夜行者', desc: '连续 7 天晚上 10 点后打卡', icon: '🌙', reward: 100, tag: '挑战' },
+  { id: 'night_owl_30', name: '月夜之王', desc: '连续 30 天晚上 10 点后打卡', icon: '🌑', reward: 500, tag: '传说' },
   { id: 'perfect_week_1', name: '首次周满勤', desc: '完成 1 次周一到周日全勤', icon: '📅', reward: 50, tag: '循环' },
   { id: 'perfect_week_4', name: '四周满勤', desc: '完成 4 次周满勤', icon: '📆', reward: 150, tag: '循环' },
   { id: 'perfect_week_12', name: '季度全勤', desc: '完成 12 次周满勤', icon: '🗓️', reward: 500, tag: '循环' },
@@ -45,9 +46,44 @@ const achievementList = [
   { id: 'perfect_month_3', name: '三月连勤', desc: '完成 3 次月满勤', icon: '🌸', reward: 500, tag: '循环' },
   { id: 'perfect_month_6', name: '半年全勤', desc: '完成 6 次月满勤', icon: '☀️', reward: 1000, tag: '传说' },
   { id: 'perfect_month_12', name: '年度月月满勤', desc: '完成 12 次月满勤', icon: '🐉', reward: 3000, tag: '传说' },
+
+  // ===== 心情成就 =====
+  { id: 'mood_first', name: '情绪初探', desc: '第一次在日记中记录心情', icon: '😊', reward: 10, tag: '心情' },
+  { id: 'mood_all_5', name: '五味杂陈', desc: '使用过全部 5 种心情', icon: '🎨', reward: 60, tag: '心情' },
+  { id: 'mood_streak_7', name: '情绪日记家', desc: '连续 7 天写带心情的日记', icon: '📖', reward: 80, tag: '心情' },
+  { id: 'mood_swing', name: '心情过山车', desc: '同一天写了 2 条不同心情的日记', icon: '🎢', reward: 30, tag: '心情' },
+
+  // ===== 消费成就 =====
+  { id: 'spend_100', name: '初次破费', desc: '累计消费 100 金币', icon: '💸', reward: 20, tag: '消费' },
+  { id: 'spend_500', name: '购物达人', desc: '累计消费 500 金币', icon: '🛍️', reward: 60, tag: '消费' },
+  { id: 'spend_2000', name: '剁手党', desc: '累计消费 2000 金币', icon: '💳', reward: 150, tag: '消费' },
+  { id: 'spend_5000', name: '土豪降临', desc: '累计消费 5000 金币', icon: '💎', reward: 400, tag: '消费' },
+
+  // ===== 时光信件成就 =====
+  { id: 'letter_first', name: '时光信使', desc: '寄出第一封时光信件', icon: '✉️', reward: 15, tag: '时光' },
+  { id: 'letter_open', name: '拆信的喜悦', desc: '打开第一封时光信件', icon: '💌', reward: 15, tag: '时光' },
+  { id: 'letter_5', name: '书信往来', desc: '累计寄出 5 封时光信件', icon: '📬', reward: 50, tag: '时光' },
+  { id: 'letter_to_self', name: '写给未来的我', desc: '给自己写一封 30 天后开启的信', icon: '⏳', reward: 40, tag: '时光' },
+
+  // ===== 日记深度成就 =====
+  { id: 'diary_streak_7', name: '笔耕不辍', desc: '连续 7 天写日记', icon: '✍️', reward: 80, tag: '挑战' },
+  { id: 'diary_streak_30', name: '日记人生', desc: '连续 30 天写日记', icon: '📕', reward: 300, tag: '传说' },
+  { id: 'diary_night', name: '深夜独白', desc: '在凌晨 0-5 点写日记', icon: '🌃', reward: 25, tag: '彩蛋' },
+  { id: 'diary_long', name: '千字文', desc: '写下超过 200 字的日记', icon: '📜', reward: 30, tag: '彩蛋' },
+
+  // ===== 收集成就 =====
+  { id: 'own_theme_3', name: '主题收藏家', desc: '拥有 3 个以上主题', icon: '🎨', reward: 60, tag: '收集' },
+  { id: 'own_effect_3', name: '特效大师', desc: '拥有 3 个以上签到特效', icon: '✨', reward: 60, tag: '收集' },
+  { id: 'own_all_frame', name: '相框达人', desc: '拥有 5 个以上周报相框', icon: '🖼️', reward: 100, tag: '收集' },
+
+  // ===== 组合成就 =====
+  { id: 'combo_daily', name: '完美一天', desc: '同一天完成签到 + 写日记 + 收藏语录', icon: '🌟', reward: 40, tag: '彩蛋' },
+  { id: 'weekend_10', name: '周末战士', desc: '累计在周末打卡 10 次', icon: '⚔️', reward: 80, tag: '挑战' },
+  { id: 'coin_recovery', name: '触底反弹', desc: '金币低于 10 后重新攒到 500', icon: '📈', reward: 100, tag: '彩蛋' },
+  { id: 'quote_daily', name: '语录鉴赏家', desc: '连续 3 天收藏语录', icon: '📰', reward: 40, tag: '挑战' },
 ]
 
-const achievementTags = ['基础', '进阶', '挑战', '循环', '传说']
+const achievementTags = ['基础', '进阶', '挑战', '循环', '传说', '心情', '消费', '时光', '收集', '彩蛋']
 const activeAchTag = ref('all')
 
 const filteredAchievements = computed(() => {
@@ -121,7 +157,7 @@ function isUnlocked(id) {
   -webkit-text-fill-color: transparent;
   letter-spacing: -2px;
 }
-.ach-big-label { font-size: 15px; color: #aaa; margin-top: 6px; margin-bottom: 20px; font-weight: 500; }
+.ach-big-label { font-size: 15px; color: #888; margin-top: 6px; margin-bottom: 20px; font-weight: 500; }
 .ach-bar-wrap { padding: 0 48px; }
 .ach-bar { height: 8px; background: #f0f0f0; border-radius: 8px; overflow: hidden; }
 .ach-fill { height: 100%; background: linear-gradient(90deg, #ff6b8a, #ffa07a); border-radius: 8px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -131,7 +167,7 @@ function isUnlocked(id) {
   padding: 6px 14px;
   border: none;
   border-radius: 16px;
-  background: #f0f0f0;
+  background: #e8e4de;
   color: #888;
   font-size: 13px;
   font-weight: 600;
@@ -181,11 +217,11 @@ function isUnlocked(id) {
   box-shadow: 0 4px 12px rgba(255,107,138,0.3);
 }
 .ach-detail { flex: 1; }
-.ach-name { font-size: 15px; font-weight: 700; color: #1a1a1a; }
-.ach-desc { font-size: 13px; color: #aaa; margin-top: 3px; }
+.ach-name { font-size: 15px; font-weight: 700; color: #4a4a56; }
+.ach-desc { font-size: 13px; color: #888; margin-top: 3px; }
 .ach-badge { font-size: 13px; }
-.ach-ok { color: #10b981; font-weight: 800; font-size: 18px; }
-.ach-pts { color: #ccc; font-weight: 600; }
+.ach-ok { color: #8fae9a; font-weight: 800; font-size: 18px; }
+.ach-pts { color: #999; font-weight: 600; }
 
 .ach-tag-label {
   display: inline-block;
@@ -201,4 +237,9 @@ function isUnlocked(id) {
 .ach-tag-label.挑战 { background: #fef3c7; color: #d97706 !important; }
 .ach-tag-label.循环 { background: #d1fae5; color: #059669 !important; }
 .ach-tag-label.传说 { background: #fde68a; color: #b45309 !important; }
+.ach-tag-label.心情 { background: #fce7f3; color: #db2777 !important; }
+.ach-tag-label.消费 { background: #ede9fe; color: #7c3aed !important; }
+.ach-tag-label.时光 { background: #e0f2fe; color: #0284c7 !important; }
+.ach-tag-label.收集 { background: #ffedd5; color: #ea580c !important; }
+.ach-tag-label.彩蛋 { background: #fef9c3; color: #ca8a04 !important; }
 </style>

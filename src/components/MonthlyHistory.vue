@@ -60,7 +60,7 @@ const currentYear = ref(new Date().getFullYear())
 const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
 
 const canPrev = computed(() => {
-  const first = store.checkins.length > 0 ? store.checkins.sort()[0] : null
+  const first = store.checkins.length > 0 ? [...store.checkins].sort()[0] : null
   if (!first) return false
   return currentYear.value > parseInt(first.split('-')[0])
 })

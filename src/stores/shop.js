@@ -2,15 +2,10 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useGameStore } from './game'
 import { catalog, gachaPool, gachaNormalRewards, premiumGachaPool } from '../data/catalog'
-
-const SHOP_KEY = 'dino-app-shop'
+import { loadState, saveState, SHOP_KEY } from '../composables/useStorage'
 
 function loadShopState() {
-  try {
-    const raw = localStorage.getItem(SHOP_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch {}
-  return null
+  return loadState(SHOP_KEY)
 }
 
 function defaultShopState() {
@@ -53,8 +48,8 @@ export const titleDefs = [
   { id: 'title_dreamer', name: '梦想家', icon: '💫', desc: '解锁10个成就', cost: 0, condition: (game) => game.achievements.length >= 10 },
   { id: 'title_legend', name: '传说', icon: '🌟', desc: '解锁30个成就', cost: 0, condition: (game) => game.achievements.length >= 30 },
   { id: 'title_vip', name: 'VIP', icon: '💜', desc: '累计消费2000币', cost: 0, condition: (game) => game.totalSpent >= 2000 },
-  { id: 'title_early', name: '早起鸟', icon: '🐦', desc: '早上6点前打卡', cost: 0, condition: (game) => game.hasEarlyBird },
-  { id: 'title_night', name: '夜猫子', icon: '🦉', desc: '凌晨12点后打卡', cost: 0, condition: (game) => game.hasNightOwl },
+  { id: 'title_early', name: '早起鸟', icon: '🐦', desc: '早上8点前打卡', cost: 0, condition: (game) => game.hasEarlyBird },
+  { id: 'title_night', name: '夜猫子', icon: '🦉', desc: '晚上10点后打卡', cost: 0, condition: (game) => game.hasNightOwl },
   { id: 'title_perfectionist', name: '完美主义', icon: '✨', desc: '拥有15件装扮', cost: 0, condition: (_, shop) => {
     const equipable = shop.purchasedItems.filter(id => { const i = shop.getItem(id); return i && i.type === 'equipable' })
     return equipable.length >= 15
@@ -166,7 +161,7 @@ export const useShopStore = defineStore('shop', () => {
   const unlockedHiddenDialogues = ref(initial.unlockedHiddenDialogues || [])
 
   // 每日自动刷新限时商店
-  const today = new Date().toISOString().slice(0, 10)
+  const now = new Date(); const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
   if (lastLimitedRefresh.value !== today) {
     limitedShopItems.value = getLimitedItems(today)
     lastLimitedRefresh.value = today
@@ -175,7 +170,7 @@ export const useShopStore = defineStore('shop', () => {
   // 持久化
   watch([purchasedItems, equippedItems, consumables, gachaCount, gachaHistory, totalGachaPulls, selectedQuoteCategories, quoteCategoriesExplicitlySet, ownedTitles, activeTitle, lastLimitedRefresh, limitedShopItems, useOriginalStyle, darkMode, unlockedHiddenDialogues], () => {
     try {
-      localStorage.setItem(SHOP_KEY, JSON.stringify({
+      saveState({
         purchasedItems: purchasedItems.value,
         equippedItems: equippedItems.value,
         consumables: consumables.value,
@@ -191,7 +186,7 @@ export const useShopStore = defineStore('shop', () => {
         useOriginalStyle: useOriginalStyle.value,
         darkMode: darkMode.value,
         unlockedHiddenDialogues: unlockedHiddenDialogues.value,
-      }))
+      }, SHOP_KEY)
     } catch {}
   }, { deep: true })
 
@@ -278,11 +273,16 @@ export const useShopStore = defineStore('shop', () => {
   // 检查并解锁隐藏台词
   function checkHiddenDialogues() {
     const newDialogues = []
+    const gameStore = useGameStore()
     for (const hd of hiddenDialogues) {
       if (unlockedHiddenDialogues.value.includes(hd.id)) continue
       if (purchasedItems.value.includes(hd.itemId)) {
         unlockedHiddenDialogues.value.push(hd.id)
         newDialogues.push(hd)
+        // 同步到游戏存档的收集列表
+        if (!gameStore.collectedDialogues.includes(hd.id)) {
+          gameStore.collectedDialogues.push(hd.id)
+        }
       }
     }
     return newDialogues
@@ -338,6 +338,8 @@ export const useShopStore = defineStore('shop', () => {
     const gameStore = useGameStore()
     if (gameStore.coins < t.cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= t.cost
+    gameStore.totalSpent += t.cost
+    if (t.cost > 0) gameStore.logCoin(-t.cost, `🏅 ${t.name}`)
     ownedTitles.value.push(titleId)
     return { ok: true }
   }
@@ -373,6 +375,7 @@ export const useShopStore = defineStore('shop', () => {
     if (gameStore.coins < item.price) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= item.price
     gameStore.totalSpent += item.price
+    gameStore.logCoin(-item.price, `🛒 ${item.name}`)
     if (item.type === 'consumable') {
       consumables.value[item.data.propKey] = (consumables.value[item.data.propKey] || 0) + 1
     } else {
@@ -391,6 +394,7 @@ export const useShopStore = defineStore('shop', () => {
     if (gameStore.coins < discountedPrice) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= discountedPrice
     gameStore.totalSpent += discountedPrice
+    gameStore.logCoin(-discountedPrice, `⏰ ${item.name}(-${limitedItem.discount}%)`)
     purchasedItems.value.push(limitedItem.id)
     return { ok: true }
   }
@@ -415,6 +419,7 @@ export const useShopStore = defineStore('shop', () => {
     const cost = times === 5 ? 650 : 150
     if (gameStore.coins < cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= cost
+    gameStore.logCoin(-cost, `🎰 普通抽奖×${times}`)
     totalGachaPulls.value += times
 
     const results = []
@@ -469,6 +474,7 @@ export const useShopStore = defineStore('shop', () => {
     const cost = times === 5 ? 6500 : 1500
     if (gameStore.coins < cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= cost
+    gameStore.logCoin(-cost, `💎 高级抽奖×${times}`)
     totalGachaPulls.value += times
 
     const results = []
@@ -530,10 +536,14 @@ export const useShopStore = defineStore('shop', () => {
     gachaHistory.value = def.gachaHistory
     totalGachaPulls.value = def.totalGachaPulls
     selectedQuoteCategories.value = def.selectedQuoteCategories
+    quoteCategoriesExplicitlySet.value = def.quoteCategoriesExplicitlySet
     ownedTitles.value = def.ownedTitles
     activeTitle.value = def.activeTitle
     lastLimitedRefresh.value = def.lastLimitedRefresh
     limitedShopItems.value = def.limitedShopItems
+    unlockedHiddenDialogues.value = def.unlockedHiddenDialogues
+    useOriginalStyle.value = false
+    darkMode.value = true
   }
 
   function toggleOriginalStyle() { useOriginalStyle.value = !useOriginalStyle.value }

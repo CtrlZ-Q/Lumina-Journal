@@ -9,11 +9,33 @@ const store = useGameStore()
 const shop = useShopStore()
 
 const now = new Date()
-const year = now.getFullYear()
-const month = now.getMonth()
-const daysInMonth = new Date(year, month + 1, 0).getDate()
-const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7 // 周一=0, 周日=6
+const year = ref(now.getFullYear())
+const month = ref(now.getMonth())
 const todayDate = now.getDate()
+const todayYear = now.getFullYear()
+const todayMonth = now.getMonth()
+
+const daysInMonth = computed(() => new Date(year.value, month.value + 1, 0).getDate())
+const firstDayOffset = computed(() => (new Date(year.value, month.value, 1).getDay() + 6) % 7)
+
+function prevMonth() {
+  if (month.value === 0) { month.value = 11; year.value-- }
+  else month.value--
+}
+function nextMonth() {
+  if (month.value === 11) { month.value = 0; year.value++ }
+  else month.value++
+  // 不超过当前月
+  if (year.value > todayYear || (year.value === todayYear && month.value > todayMonth)) {
+    month.value = todayMonth
+    year.value = todayYear
+  }
+}
+function goToday() {
+  year.value = todayYear
+  month.value = todayMonth
+}
+const isCurrentMonth = computed(() => year.value === todayYear && month.value === todayMonth)
 
 // 时光邮箱
 const showWriteModal = ref(false)
@@ -59,14 +81,14 @@ function daysUntil(dateStr) {
 }
 
 function dateStr(day) {
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return `${year.value}-${String(month.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
-const monthCheckins = computed(() => store.checkins.filter(d => d.startsWith(monthPrefix)).length)
+const monthPrefix = computed(() => `${year.value}-${String(month.value + 1).padStart(2, '0')}`)
+const monthCheckins = computed(() => store.checkins.filter(d => d.startsWith(monthPrefix.value)).length)
 
 // 本月心情统计
-const moodStats = computed(() => store.getMoodStats(year, month))
+const moodStats = computed(() => store.getMoodStats(year.value, month.value))
 const totalMoodEntries = computed(() => Object.values(moodStats.value).reduce((a, b) => a + b, 0))
 
 const calStyle = computed(() => {
@@ -78,8 +100,8 @@ const calStyle = computed(() => {
 
 const styleMap = {
   classic: {
-    pageBg: 'linear-gradient(135deg, #faf4f6 0%, #faf6f4 50%, #fdf8f6 100%)',
-    cardBg: 'rgba(255,255,255,0.9)',
+    pageBg: 'linear-gradient(135deg, #e5ded4 0%, #e0d9ce 50%, #e5e0d8 100%)',
+    cardBg: 'rgba(235,228,218,0.9)',
     headerBg: 'linear-gradient(135deg, #d4a0b4, #c8b0a0)',
     headerColor: '#fff',
     checkedBg: 'linear-gradient(135deg, #d4a0b4, #c8b0a0, #c8c0a0)',
@@ -230,7 +252,12 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
           <span class="cal-top-icon">📅</span>
           <div>
             <div class="cal-top-title" :style="{ color: shop.darkMode ? '#d0d0e0' : currentStyle.headerColor }">打卡日历</div>
-            <div class="cal-top-date" :style="{ color: shop.darkMode ? '#b0b0c8' : currentStyle.headerColor, opacity: 0.8 }">{{ year }}年{{ month + 1 }}月</div>
+            <div class="cal-nav-row">
+              <button class="cal-nav-btn" @click="prevMonth">‹</button>
+              <span class="cal-top-date" :style="{ color: shop.darkMode ? '#b0b0c8' : currentStyle.headerColor, opacity: 0.8 }">{{ year }}年{{ month + 1 }}月</span>
+              <button class="cal-nav-btn" @click="nextMonth">›</button>
+              <button v-if="!isCurrentMonth" class="cal-today-btn" @click="goToday" :style="{ color: currentStyle.headerColor }">今天</button>
+            </div>
           </div>
         </div>
         <div class="cal-top-right">
@@ -249,9 +276,9 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
       <div class="cal-grid">
         <div v-for="d in ['一','二','三','四','五','六','日']" :key="d" class="cal-wk" :style="{ color: currentStyle.weekColor }">{{ d }}</div>
         <div v-for="n in firstDayOffset" :key="'pad'+n" class="cal-cell pad"></div>
-        <div v-for="day in daysInMonth" :key="day" class="cal-cell" :class="{ checked: store.checkins.includes(dateStr(day)), today: day === todayDate, dark: isDark, 'has-mood': store.getDayMood(dateStr(day)) }" :style="{
-          background: store.checkins.includes(dateStr(day)) ? currentStyle.checkedBg : (day === todayDate ? currentStyle.todayBg : currentStyle.cellBg),
-          color: store.checkins.includes(dateStr(day)) ? currentStyle.checkedColor : (day === todayDate ? currentStyle.todayColor : (isDark ? '#a5b4fc' : '#999')),
+        <div v-for="day in daysInMonth" :key="day" class="cal-cell" :class="{ checked: store.checkins.includes(dateStr(day)), today: isCurrentMonth && day === todayDate, dark: isDark, 'has-mood': store.getDayMood(dateStr(day)) }" :style="{
+          background: store.checkins.includes(dateStr(day)) ? currentStyle.checkedBg : (isCurrentMonth && day === todayDate ? currentStyle.todayBg : currentStyle.cellBg),
+          color: store.checkins.includes(dateStr(day)) ? currentStyle.checkedColor : (isCurrentMonth && day === todayDate ? currentStyle.todayColor : (isDark ? '#a5b4fc' : '#999')),
           '--today-clr': day === todayDate ? currentStyle.todayColor : '#ff6b8a',
           '--mood-clr': store.getDayMood(dateStr(day)) ? (getMoodByKey(store.getDayMood(dateStr(day)))?.color || '#ccc') : 'transparent',
           boxShadow: store.checkins.includes(dateStr(day)) ? `0 6px 24px ${currentStyle.todayColor}55` : 'none'
@@ -279,7 +306,7 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
           <div class="cal-stat-lbl">连续天数</div>
         </div>
         <div class="cal-stat-item">
-          <div class="cal-stat-val" :style="{ color: currentStyle.todayColor }">{{ Math.round(monthCheckins / todayDate * 100) }}%</div>
+          <div class="cal-stat-val" :style="{ color: currentStyle.todayColor }">{{ Math.round(monthCheckins / (isCurrentMonth ? todayDate : daysInMonth) * 100) }}%</div>
           <div class="cal-stat-lbl">出勤率</div>
         </div>
       </div>
@@ -360,19 +387,36 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showWriteModal" class="mail-modal-mask" @click.self="showWriteModal = false">
-          <div class="mail-modal-box write-modal">
-            <div class="mail-modal-icon">✉️</div>
-            <div class="mail-modal-title">写给未来的自己</div>
-            <input v-model="letterTitle" class="mail-title-input" placeholder="给这封信起个标题..." maxlength="20" />
-            <textarea v-model="letterText" class="mail-textarea" placeholder="写下你想说的话..." maxlength="1500" rows="6"></textarea>
-            <div class="mail-char-count">{{ letterText.length }}/1500</div>
-            <div class="mail-date-row">
-              <span class="mail-date-label">选择拆信日期：</span>
-              <input type="date" v-model="letterDate" :min="minDate" class="mail-date-input" />
-            </div>
-            <div class="mail-modal-btns">
-              <button class="mail-btn cancel" @click="showWriteModal = false">取消</button>
-              <button class="mail-btn confirm" @click="submitLetter" :disabled="!letterTitle.trim() || !letterText.trim() || !letterDate">投递 ✈️</button>
+          <div class="envelope write-envelope">
+            <div class="envelope-flap"></div>
+            <div class="envelope-body">
+              <div class="letter-sheet write-sheet">
+                <div class="sheet-deco">✐</div>
+                <div class="sheet-title-row">
+                  <span class="sheet-emoji">✉️</span>
+                  <span class="sheet-title">写给未来的自己</span>
+                </div>
+                <input v-model="letterTitle" class="sheet-input title-input" placeholder="给这封信起个标题..." maxlength="20" />
+                <div class="sheet-divider"></div>
+                <div class="sheet-lines">
+                  <textarea v-model="letterText" class="sheet-textarea" placeholder="亲爱的未来的我，&#10;&#10;当你看到这封信的时候..." maxlength="1500"></textarea>
+                </div>
+                <div class="sheet-bottom">
+                  <div class="sheet-char">{{ letterText.length }} / 1500</div>
+                  <div class="sheet-date-row">
+                    <span>📅</span>
+                    <input type="date" v-model="letterDate" :min="minDate" class="sheet-date" />
+                    <span class="sheet-date-hint">拆信日期</span>
+                  </div>
+                </div>
+                <div class="sheet-actions">
+                  <button class="sheet-btn cancel" @click="showWriteModal = false">算了</button>
+                  <button class="sheet-btn send" @click="submitLetter" :disabled="!letterTitle.trim() || !letterText.trim() || !letterDate">
+                    <span>封好投递</span> <span class="send-icon">✈️</span>
+                  </button>
+                </div>
+              </div>
+              <div class="envelope-stamp">📮</div>
             </div>
           </div>
         </div>
@@ -383,13 +427,29 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showLetterModal && selectedLetter" class="mail-modal-mask" @click.self="showLetterModal = false">
-          <div class="mail-modal-box read-modal">
-            <div class="mail-modal-icon">💌</div>
-            <div class="mail-modal-title">{{ selectedLetter.title || '无题' }}</div>
-            <div class="mail-letter-from">来自 {{ selectedLetter.createdAt }} 的自己</div>
-            <div class="mail-letter-content">{{ selectedLetter.text }}</div>
-            <div class="mail-letter-meta">写于 {{ selectedLetter.createdAt }} · 定于 {{ selectedLetter.openDate }} 拆开</div>
-            <button class="mail-btn confirm" @click="showLetterModal = false" style="margin-top: 20px">知道了</button>
+          <div class="envelope read-envelope">
+            <div class="envelope-flap open"></div>
+            <div class="envelope-body">
+              <div class="letter-sheet read-sheet">
+                <div class="read-seal">💌</div>
+                <div class="read-title">{{ selectedLetter.title || '无题' }}</div>
+                <div class="read-from">来自 {{ selectedLetter.createdAt }} 的自己</div>
+                <div class="sheet-divider"></div>
+                <div class="sheet-lines">
+                  <div class="read-content">{{ selectedLetter.text }}</div>
+                </div>
+                <div class="read-sign">
+                  <div class="sign-line"></div>
+                  <div class="sign-info">
+                    <span>写于 {{ selectedLetter.createdAt }}</span>
+                    <span class="sign-dot">✦</span>
+                    <span>{{ selectedLetter.openDate }} 拆开</span>
+                  </div>
+                </div>
+                <button class="sheet-btn close" @click="showLetterModal = false">收好信件 💌</button>
+              </div>
+              <div class="envelope-stamp">📬</div>
+            </div>
           </div>
         </div>
       </Transition>
@@ -416,7 +476,21 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
 .cal-top-left { display: flex; align-items: center; gap: 14px; }
 .cal-top-icon { font-size: 32px; }
 .cal-top-title { font-size: 20px; font-weight: 800; }
-.cal-top-date { font-size: 14px; font-weight: 500; margin-top: 2px; }
+.cal-nav-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.cal-nav-btn {
+  width: 24px; height: 24px; border: none; border-radius: 6px;
+  background: rgba(255,255,255,0.2); color: inherit; font-size: 16px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.cal-nav-btn:hover { background: rgba(255,255,255,0.35); }
+.cal-top-date { font-size: 14px; font-weight: 500; min-width: 80px; text-align: center; }
+.cal-today-btn {
+  border: none; border-radius: 8px; padding: 2px 10px;
+  background: rgba(255,255,255,0.2); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background 0.2s;
+}
+.cal-today-btn:hover { background: rgba(255,255,255,0.35); }
 .cal-top-right { text-align: right; }
 .cal-top-streak { text-align: center; }
 .cal-streak-num { font-size: 32px; font-weight: 900; display: block; line-height: 1; }
@@ -611,7 +685,7 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
 }
 .mailbox-write-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232,168,96,0.4); }
 .mailbox-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
-.mailbox-empty { text-align: center; font-size: 13px; color: #c0a888; padding: 24px 0; }
+.mailbox-empty { text-align: center; font-size: 13px; color: #a08868; padding: 24px 0; }
 .empty-envelope { font-size: 36px; margin-bottom: 8px; opacity: 0.4; }
 
 /* 信件卡片 */
@@ -719,124 +793,257 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
   top: 10px; right: 32px;
   width: 22px; height: 22px;
   border: none; border-radius: 50%;
-  background: rgba(0,0,0,0.06); color: #bbb;
+  background: rgba(0,0,0,0.06); color: #888;
   font-size: 13px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.2s, color 0.2s;
 }
 .letter-del:hover { background: #fee2e2; color: #ef4444; }
 
-/* ===== 邮箱弹窗 ===== */
+/* ===== 信封弹窗 ===== */
 .mail-modal-mask {
   position: fixed; inset: 0; z-index: 10000;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(12px);
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(16px);
   display: flex; align-items: center; justify-content: center;
+  padding: 20px;
 }
-.mail-modal-box {
-  background: #fff; border-radius: 24px;
-  padding: 36px 32px 28px;
-  max-width: 380px; width: 90%;
-  text-align: center;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.2);
+
+.envelope {
+  position: relative;
+  max-width: 560px; width: 100%;
+  animation: mail-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.mail-modal-icon { font-size: 48px; margin-bottom: 8px; }
-.mail-modal-title { font-size: 18px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px; }
-.mail-letter-from { font-size: 13px; color: #a08870; margin-bottom: 14px; }
-.mail-title-input {
+@keyframes mail-in { from { opacity: 0; transform: scale(0.85) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* 信封翻盖 */
+.envelope-flap {
+  height: 60px;
+  background: linear-gradient(135deg, #d4a868, #c09050);
+  border-radius: 16px 16px 0 0;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.envelope-flap::after {
+  content: '';
+  position: absolute;
+  bottom: -30px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 40px solid transparent;
+  border-right: 40px solid transparent;
+  border-top: 30px solid #d4a868;
+}
+.envelope-flap.open {
+  background: linear-gradient(135deg, #b88848, #a07838);
+}
+.envelope-flap.open::after { border-top-color: #b88848; }
+
+/* 信封主体 */
+.envelope-body {
+  background: linear-gradient(180deg, #e8d4b8, #dcc8a8);
+  border-radius: 0 0 16px 16px;
+  padding: 36px 24px 24px;
+  position: relative;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1);
+}
+/* 信封邮戳 */
+.envelope-stamp {
+  position: absolute;
+  top: 12px; right: 20px;
+  font-size: 32px;
+  opacity: 0.3;
+  transform: rotate(-12deg);
+}
+
+/* 信纸 */
+.letter-sheet {
+  background: #fffef8;
+  border-radius: 8px;
+  padding: 32px 36px;
+  position: relative;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), inset 0 0 40px rgba(200,180,140,0.08);
+  /* 横线 */
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 35px, rgba(180,160,130,0.1) 35px, rgba(180,160,130,0.1) 36px);
+  background-size: 100% 36px;
+  background-position: 0 0;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+/* 左侧装饰线 - 淡化 */
+.letter-sheet::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 44px;
+  width: 1px;
+  background: rgba(220,80,80,0.06);
+  pointer-events: none;
+}
+/* 右上角装饰 */
+.sheet-deco {
+  position: absolute;
+  top: 12px; right: 16px;
+  font-size: 64px;
+  color: rgba(200,180,140,0.07);
+  font-family: 'STXingkai', cursive;
+  pointer-events: none;
+  transform: rotate(-8deg);
+}
+
+.sheet-title-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+}
+.sheet-emoji { font-size: 26px; }
+.sheet-title {
+  font-size: 20px; font-weight: 800; color: #2a1a0a;
+  letter-spacing: 2px;
+}
+.sheet-input {
   width: 100%;
-  padding: 10px 14px;
-  border: 1.5px solid #e8e0d8;
-  border-radius: 10px;
-  font-size: 14px;
-  color: #333;
-  background: #fdf8f4;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
   outline: none;
-  transition: border-color 0.3s, box-shadow 0.3s;
-  margin-bottom: 10px;
   box-sizing: border-box;
+  font-size: 16px;
+  color: #2a1a0a;
+  letter-spacing: 1px;
   font-weight: 600;
 }
-.mail-title-input:focus { border-color: #e8a860; box-shadow: 0 0 0 4px rgba(232,168,96,0.1); }
-.mail-title-input::placeholder { color: #c8b8a0; font-weight: 400; }
-.mail-textarea {
+.sheet-input.title-input {
+  font-weight: 700;
+  border-bottom: 1.5px dashed rgba(180,150,120,0.25);
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+}
+.sheet-input::placeholder { color: #c8b8a0; font-weight: 400; }
+.sheet-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(180,150,120,0.15), transparent);
+  margin: 8px 0;
+}
+.sheet-lines { flex: 1; position: relative; }
+.sheet-textarea {
   width: 100%;
-  padding: 14px;
-  border: 1.5px solid #e8e0d8;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #333;
-  background: #fdf8f4;
+  border: none;
+  background: transparent;
   resize: none;
   outline: none;
-  transition: border-color 0.3s, box-shadow 0.3s;
-  font-family: inherit;
+  font-size: 16px;
+  line-height: 36px;
+  color: #2a1a0a;
+  font-family: 'KaiTi', '楷体', 'STKaiti', 'SimSun', serif;
+  letter-spacing: 1px;
   box-sizing: border-box;
+  min-height: 288px;
+  font-weight: 500;
 }
-.mail-textarea:focus { border-color: #e8a860; box-shadow: 0 0 0 4px rgba(232,168,96,0.1); }
-.mail-textarea::placeholder { color: #c8b8a0; }
-.mail-char-count { text-align: right; font-size: 11px; color: #bbb; margin: 4px 0 12px; }
-.mail-date-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
+.sheet-textarea::placeholder { color: #b0a090; font-family: inherit; line-height: 36px; }
+
+/* 底部 */
+.sheet-bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px;
 }
-.mail-date-label { font-size: 13px; color: #888; white-space: nowrap; }
-.mail-date-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1.5px solid #e8e0d8;
-  border-radius: 10px;
-  font-size: 13px;
-  color: #333;
-  background: #fdf8f4;
+.sheet-char { font-size: 12px; color: #c0b0a0; }
+.sheet-date-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: #a08870;
+}
+.sheet-date {
+  padding: 5px 10px;
+  border: 1px solid rgba(180,150,120,0.2);
+  border-radius: 8px;
+  font-size: 13px; color: #5a4830;
+  background: rgba(255,255,255,0.6);
   outline: none;
-  transition: border-color 0.3s;
 }
-.mail-date-input:focus { border-color: #e8a860; }
-.mail-modal-btns { display: flex; gap: 10px; justify-content: center; }
-.mail-btn {
+.sheet-date:focus { border-color: #d4a868; }
+.sheet-date-hint { font-size: 12px; color: #b0a090; }
+
+/* 按钮 */
+.sheet-actions {
+  display: flex; gap: 12px; justify-content: flex-end;
+  margin-top: 20px;
+}
+.sheet-btn {
   padding: 12px 28px;
-  border: none;
-  border-radius: 14px;
-  font-size: 14px;
-  font-weight: 700;
+  border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: all 0.3s;
 }
-.mail-btn.cancel {
-  background: #f0f0f0;
-  color: #666;
+.sheet-btn.cancel {
+  background: rgba(0,0,0,0.04);
+  color: #999;
 }
-.mail-btn.cancel:hover { background: #e8e8e8; }
-.mail-btn.confirm {
+.sheet-btn.cancel:hover { background: rgba(0,0,0,0.07); }
+.sheet-btn.send {
   background: linear-gradient(135deg, #e8a860, #d4944a);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(232,168,96,0.3);
+  box-shadow: 0 4px 16px rgba(232,168,96,0.35);
+  display: flex; align-items: center; gap: 8px;
 }
-.mail-btn.confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232,168,96,0.4); }
-.mail-btn.confirm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.sheet-btn.send:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,168,96,0.45); }
+.sheet-btn.send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.send-icon { font-size: 18px; }
 
-/* 拆信弹窗 */
-.read-modal { padding: 40px 36px 32px; }
-.mail-letter-content {
+/* 读信 */
+.read-seal {
+  text-align: center;
+  font-size: 48px;
+  margin-bottom: 8px;
+  animation: seal-float 2s ease-in-out infinite;
+}
+@keyframes seal-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.read-title {
+  font-size: 22px; font-weight: 800; color: #2a1a0a;
+  text-align: center;
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+.read-from {
+  font-size: 14px; color: #a08870;
+  text-align: center;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+.read-content {
   font-size: 17px;
-  line-height: 1.8;
-  color: #333;
-  font-family: 'STXingkai', '华文行楷', 'XingKai', '行楷', 'STKaiti', 'KaiTi', '楷体', 'SimSun', cursive, serif;
+  line-height: 36px;
+  color: #2a1a0a;
+  font-family: 'KaiTi', '楷体', 'STKaiti', 'SimSun', serif;
   letter-spacing: 1px;
-  padding: 20px;
-  background: linear-gradient(135deg, #fdf6ee, #fef9f3);
-  border-radius: 14px;
-  text-align: left;
+  white-space: pre-wrap;
   word-break: break-all;
-  margin-bottom: 12px;
+  flex: 1;
+  font-weight: 500;
 }
-.mail-letter-meta { font-size: 11px; color: #bbb; }
-
-.modal-enter-active { animation: mail-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.modal-leave-active { animation: mail-in 0.25s ease reverse; }
-@keyframes mail-in { from { opacity: 0; transform: scale(0.9) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.read-sign {
+  margin-top: 20px;
+}
+.sign-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(180,150,120,0.2), transparent);
+  margin-bottom: 10px;
+}
+.sign-info {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  font-size: 13px; color: #b0a090;
+}
+.sign-dot { color: #d4a868; font-size: 10px; }
+.sheet-btn.close {
+  display: block;
+  margin: 20px auto 0;
+  background: linear-gradient(135deg, #e8a860, #d4944a);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(232,168,96,0.35);
+}
+.sheet-btn.close:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,168,96,0.45); }
 
 /* ===== 日历深色模式 ===== */
 .cal-dark .cal-page { background: linear-gradient(135deg, #1a1a2e, #2a2a3e); }
@@ -874,11 +1081,24 @@ const isDark = computed(() => calStyle.value === 'starry' || shop.darkMode)
 .cal-dark .letter-meta { color: #a09880; }
 .cal-dark .letter-seal { background: linear-gradient(135deg, #6a5830, #5a4820); border-color: rgba(100,80,40,0.3); }
 .cal-dark .letter-seal.glow { background: linear-gradient(135deg, #8a6830, #7a5820); }
-.cal-dark .mail-textarea { background: #2a2540; border-color: rgba(160,140,100,0.2); color: #d0c0a0; }
-.cal-dark .mail-title-input { background: #2a2540; border-color: rgba(160,140,100,0.2); color: #d0c0a0; }
-.cal-dark .mail-date-input { background: #2a2540; border-color: rgba(160,140,100,0.2); color: #d0c0a0; }
-.cal-dark .mail-letter-content { background: linear-gradient(135deg, #2a2540, #302a48); color: #d0c0a0; }
-.cal-dark .mail-letter-from { color: #a09880; }
+.cal-dark .envelope-flap { background: linear-gradient(135deg, #8a6830, #7a5820); }
+.cal-dark .envelope-flap::after { border-top-color: #8a6830; }
+.cal-dark .envelope-flap.open { background: linear-gradient(135deg, #6a4820, #5a3818); }
+.cal-dark .envelope-flap.open::after { border-top-color: #6a4820; }
+.cal-dark .envelope-body { background: linear-gradient(180deg, #3a3048, #322a40); }
+.cal-dark .letter-sheet { background: #2a2540; box-shadow: 0 2px 12px rgba(0,0,0,0.2), inset 0 0 40px rgba(0,0,0,0.1); background-image: repeating-linear-gradient(0deg, transparent, transparent 35px, rgba(100,90,70,0.06) 35px, rgba(100,90,70,0.06) 36px); }
+.cal-dark .letter-sheet::before { background: rgba(220,80,80,0.04); }
+.cal-dark .sheet-title { color: #d0c0a0; }
+.cal-dark .sheet-input { color: #e0d8c8; }
+.cal-dark .sheet-input.title-input { border-bottom-color: rgba(100,90,70,0.15); }
+.cal-dark .sheet-input::placeholder { color: #6a5a48; }
+.cal-dark .sheet-textarea { color: #e0d8c8; }
+.cal-dark .sheet-textarea::placeholder { color: #6a5a48; }
+.cal-dark .sheet-date { background: rgba(40,35,60,0.6); border-color: rgba(100,90,70,0.15); color: #e0d8c8; }
+.cal-dark .sheet-btn.cancel { background: rgba(100,100,140,0.15); color: #888; }
+.cal-dark .read-title { color: #e0d8c8; }
+.cal-dark .read-from { color: #a09880; }
+.cal-dark .read-content { color: #e0d8c8; }
 
 /* 月度历史 */
 .cal-history-section {

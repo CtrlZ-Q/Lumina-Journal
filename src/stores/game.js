@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { loadState, saveState } from '../composables/useStorage'
+import { loadState, saveState, SHOP_KEY } from '../composables/useStorage'
 import { catalog } from '../data/catalog'
 import { getActiveSeasonalEvent, moodOptions } from '../data/seasonalEvents'
 
@@ -15,8 +15,6 @@ function defaultState() {
     coins: 0,
     achievements: [],
     collectedDialogues: [],
-    collectedFragments: [],
-    dailyEvent: null,
     journal: [],
     favoriteQuotes: [],
     repeatableCounts: {},
@@ -24,6 +22,17 @@ function defaultState() {
     hasEarlyBird: false,
     hasNightOwl: false,
     timeLetters: [],
+    coinLog: [],
+    usedMoods: [],
+    moodStreakDays: { count: 0, lastDate: '' },
+    weekendCheckins: 0,
+    letterSentCount: 0,
+    letterOpenedCount: 0,
+    diaryStreak: { count: 0, lastDate: '' },
+    quoteCollectStreak: { count: 0, lastDate: '' },
+    comboDailyDone: { checkin: false, diary: false, quote: false, date: '' },
+    minCoinsEver: 999999,
+    coinRecoveryTriggered: false,
   }
 }
 
@@ -35,8 +44,6 @@ export const useGameStore = defineStore('game', () => {
   const coins = ref(state.coins)
   const achievements = ref(state.achievements)
   const collectedDialogues = ref(state.collectedDialogues)
-  const collectedFragments = ref(state.collectedFragments)
-  const dailyEvent = ref(state.dailyEvent)
   const journal = ref(state.journal)
   const favoriteQuotes = ref(state.favoriteQuotes)
   const repeatableCounts = ref(state.repeatableCounts || {})
@@ -44,6 +51,24 @@ export const useGameStore = defineStore('game', () => {
   const hasEarlyBird = ref(state.hasEarlyBird || false)
   const hasNightOwl = ref(state.hasNightOwl || false)
   const timeLetters = ref(state.timeLetters || [])
+  const coinLog = ref(state.coinLog || [])
+  const usedMoods = ref(state.usedMoods || [])
+  const moodStreakDays = ref(state.moodStreakDays || { count: 0, lastDate: '' })
+  const weekendCheckins = ref(state.weekendCheckins || 0)
+  const letterSentCount = ref(state.letterSentCount || 0)
+  const letterOpenedCount = ref(state.letterOpenedCount || 0)
+  const diaryStreak = ref(state.diaryStreak || { count: 0, lastDate: '' })
+  const quoteCollectStreak = ref(state.quoteCollectStreak || { count: 0, lastDate: '' })
+  const comboDailyDone = ref(state.comboDailyDone || { checkin: false, diary: false, quote: false, date: '' })
+  const minCoinsEver = ref(state.minCoinsEver ?? 999999)
+  const coinRecoveryTriggered = ref(state.coinRecoveryTriggered || false)
+
+  function logCoin(amount, reason) {
+    const now = new Date()
+    const time = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+    coinLog.value.unshift({ time, amount, reason, balance: coins.value })
+    if (coinLog.value.length > 200) coinLog.value.length = 200
+  }
 
   const checkedToday = computed(() => checkins.value.includes(today()))
 
@@ -74,14 +99,12 @@ export const useGameStore = defineStore('game', () => {
 
   const totalCheckins = computed(() => checkins.value.length)
 
-  watch([checkins, coins, achievements, collectedDialogues, collectedFragments, dailyEvent, journal, favoriteQuotes, repeatableCounts, totalSpent, hasEarlyBird, hasNightOwl, timeLetters], () => {
+  watch([checkins, coins, achievements, collectedDialogues, journal, favoriteQuotes, repeatableCounts, totalSpent, hasEarlyBird, hasNightOwl, timeLetters, coinLog, usedMoods, moodStreakDays, weekendCheckins, letterSentCount, letterOpenedCount, diaryStreak, quoteCollectStreak, comboDailyDone, minCoinsEver, coinRecoveryTriggered], () => {
     saveState({
       checkins: checkins.value,
       coins: coins.value,
       achievements: achievements.value,
       collectedDialogues: collectedDialogues.value,
-      collectedFragments: collectedFragments.value,
-      dailyEvent: dailyEvent.value,
       journal: journal.value,
       favoriteQuotes: favoriteQuotes.value,
       repeatableCounts: repeatableCounts.value,
@@ -89,6 +112,17 @@ export const useGameStore = defineStore('game', () => {
       hasEarlyBird: hasEarlyBird.value,
       hasNightOwl: hasNightOwl.value,
       timeLetters: timeLetters.value,
+      coinLog: coinLog.value,
+      usedMoods: usedMoods.value,
+      moodStreakDays: moodStreakDays.value,
+      weekendCheckins: weekendCheckins.value,
+      letterSentCount: letterSentCount.value,
+      letterOpenedCount: letterOpenedCount.value,
+      diaryStreak: diaryStreak.value,
+      quoteCollectStreak: quoteCollectStreak.value,
+      comboDailyDone: comboDailyDone.value,
+      minCoinsEver: minCoinsEver.value,
+      coinRecoveryTriggered: coinRecoveryTriggered.value,
     })
   }, { deep: true })
 
@@ -106,9 +140,8 @@ export const useGameStore = defineStore('game', () => {
     }
     // 装备金币加成（主题+相框）
     try {
-      const shopRaw = localStorage.getItem('dino-app-shop')
-      if (shopRaw) {
-        const shopData = JSON.parse(shopRaw)
+      const shopData = loadState(SHOP_KEY)
+      if (shopData) {
         const equipped = shopData.equippedItems || {}
         let bonusRate = 0
         // 主题加成
@@ -131,6 +164,7 @@ export const useGameStore = defineStore('game', () => {
       }
     } catch {}
     coins.value += reward
+    logCoin(reward, '📅 签到')
 
     // 时间成就
     const hour = new Date().getHours()
@@ -141,6 +175,60 @@ export const useGameStore = defineStore('game', () => {
     if (hour >= 22) {
       hasNightOwl.value = true
       if (unlockAchievement('night_owl', 15)) pendingToasts.push('🦉 夜猫子打卡！+15币')
+    }
+
+    // 连续早起打卡（仅在签到时检测，防止日记写入刷次数）
+    const todayStr = today()
+    const yesterdayOfToday = new Date()
+    yesterdayOfToday.setDate(yesterdayOfToday.getDate() - 1)
+    const yesterdayStr = dateStr(yesterdayOfToday)
+
+    const lastEarlyDate = repeatableCounts.value['early_streak_date'] || ''
+    if (lastEarlyDate !== '' && lastEarlyDate !== todayStr && lastEarlyDate !== yesterdayStr) {
+      repeatableCounts.value['early_streak'] = 0
+    }
+    if (hour < 8 && lastEarlyDate !== todayStr) {
+      const earlyStreak = getRepeatCount('early_streak') + 1
+      repeatableCounts.value['early_streak'] = earlyStreak
+      repeatableCounts.value['early_streak_date'] = todayStr
+      if (earlyStreak >= 7 && unlockAchievement('early_bird_7', 100)) pendingToasts.push('🏆 晨光行者！连续7天早起+100币')
+      if (earlyStreak >= 30 && unlockAchievement('early_bird_30', 500)) pendingToasts.push('🏆 日出之王！连续30天早起+500币')
+    } else if (lastEarlyDate !== todayStr && lastEarlyDate !== '') {
+      repeatableCounts.value['early_streak'] = 0
+    }
+
+    // 连续深夜打卡（仅在签到时检测）
+    const lastNightDate = repeatableCounts.value['night_streak_date'] || ''
+    if (lastNightDate !== '' && lastNightDate !== todayStr && lastNightDate !== yesterdayStr) {
+      repeatableCounts.value['night_streak'] = 0
+    }
+    if (hour >= 22 && lastNightDate !== todayStr) {
+      const nightStreak = getRepeatCount('night_streak') + 1
+      repeatableCounts.value['night_streak'] = nightStreak
+      repeatableCounts.value['night_streak_date'] = todayStr
+      if (nightStreak >= 7 && unlockAchievement('night_owl_7', 100)) pendingToasts.push('🏆 暗夜行者！连续7天深夜+100币')
+      if (nightStreak >= 30 && unlockAchievement('night_owl_30', 500)) pendingToasts.push('🌑 月夜之王！连续30天深夜+500币')
+    } else if (lastNightDate !== todayStr && lastNightDate !== '') {
+      repeatableCounts.value['night_streak'] = 0
+    }
+
+    // 周末打卡计数
+    const dayOfWeek = new Date().getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      weekendCheckins.value++
+    }
+
+    // 组合成就：签到部分
+    const cd = comboDailyDone.value
+    if (cd.date !== today()) {
+      comboDailyDone.value = { checkin: true, diary: false, quote: false, date: today() }
+    } else {
+      cd.checkin = true
+    }
+
+    // 最低金币追踪
+    if (coins.value < minCoinsEver.value) {
+      minCoinsEver.value = coins.value
     }
 
     checkAchievements()
@@ -165,17 +253,14 @@ export const useGameStore = defineStore('game', () => {
     }
     // 扩展语录包（从 shop store 的 localStorage 读取，避免循环依赖）
     try {
-      const shopRaw = localStorage.getItem('dino-app-shop')
-      if (shopRaw) {
-        const shopData = JSON.parse(shopRaw)
+      const shopData = loadState(SHOP_KEY)
+      if (shopData) {
         const selected = shopData.selectedQuoteCategories || []
         const explicitlySet = shopData.quoteCategoriesExplicitlySet || false
         const extra = (shopData.purchasedItems || [])
           .filter(id => {
             const item = catalog.find(i => i.id === id)
             if (!item || item.category !== 'quote') return false
-            // 主动卸下了全部类别 → 不显示任何扩展语录
-            if (explicitlySet && selected.length === 0) return false
             // 有选择类别，只包含选中的；没选则全部显示
             if (selected.length > 0 && !selected.includes(id)) return false
             return true
@@ -201,7 +286,7 @@ export const useGameStore = defineStore('game', () => {
         ]
         const unlocked = shopData.unlockedHiddenDialogues || []
         const hiddenTexts = hiddenDialogues
-          .filter(hd => unlocked.includes(hd.id) || shopData.purchasedItems.includes(hd.itemId))
+          .filter(hd => unlocked.includes(hd.id) || (shopData.purchasedItems || []).includes(hd.itemId))
           .map(hd => hd.text)
         if (hiddenTexts.length > 0) {
           base.push(...hiddenTexts)
@@ -218,7 +303,7 @@ export const useGameStore = defineStore('game', () => {
   function unlockAchievement(id, reward = 0) {
     if (hasAchievement(id)) return false
     achievements.value.push({ id, unlockedAt: today() })
-    if (reward > 0) coins.value += reward
+    if (reward > 0) { coins.value += reward; logCoin(reward, '🏆 成就') }
     return true
   }
 
@@ -266,6 +351,7 @@ export const useGameStore = defineStore('game', () => {
     const total = totalCheckins.value
     const now = new Date()
     const day = now.getDay()
+    const todayStr = today()
 
     // ===== 一次性成就：连续打卡 =====
     if (streak >= 3 && unlockAchievement('streak_3', 20)) newToasts.push('🏆 初露锋芒！+20币')
@@ -303,42 +389,10 @@ export const useGameStore = defineStore('game', () => {
     if (favoriteQuotes.value.length >= 20 && unlockAchievement('quote_20', 150)) newToasts.push('🏆 语录图书馆！+150币')
 
     // ===== 一次性成就：隐藏台词 =====
-    if (collectedDialogues.value.length >= 8 && unlockAchievement('dialogue_all', 100)) newToasts.push('🏆 知心好友！+100币')
+    if (collectedDialogues.value.length >= 12 && unlockAchievement('dialogue_all', 100)) newToasts.push('🏆 知心好友！+100币')
 
     // ===== 一次性成就：特殊时间 =====
     if ((day === 0 || day === 6) && streak >= 2 && unlockAchievement('weekend', 25)) newToasts.push('🏆 周末不松懈！+25币')
-
-    // ===== 长期挑战成就 =====
-    // 连续早起打卡 7 天（仅在签到当天且8点前递增，防止刷新刷次数）
-    const hour = new Date().getHours()
-    const todayStr = today()
-    const lastEarlyDate = repeatableCounts.value['early_streak_date'] || ''
-    const yesterdayOfToday = new Date(now)
-    yesterdayOfToday.setDate(yesterdayOfToday.getDate() - 1)
-    const yesterdayStr = dateStr(yesterdayOfToday)
-    if (hour < 8 && checkedToday.value && lastEarlyDate !== todayStr) {
-      const earlyStreak = getRepeatCount('early_streak') + 1
-      repeatableCounts.value['early_streak'] = earlyStreak
-      repeatableCounts.value['early_streak_date'] = todayStr
-      if (earlyStreak >= 7 && unlockAchievement('early_bird_7', 100)) newToasts.push('🏆 晨光行者！连续7天早起+100币')
-      if (earlyStreak >= 30 && unlockAchievement('early_bird_30', 500)) newToasts.push('🏆 日出之王！连续30天早起+500币')
-    } else if (lastEarlyDate !== todayStr && lastEarlyDate !== yesterdayStr && lastEarlyDate !== '') {
-      repeatableCounts.value['early_streak'] = 0
-    }
-
-    // 连续深夜打卡 7 天（仅在签到当天且22点后递增）
-    const lastNightDate = repeatableCounts.value['night_streak_date'] || ''
-    const yesterdayOfToday2 = new Date(now)
-    yesterdayOfToday2.setDate(yesterdayOfToday2.getDate() - 1)
-    const yesterdayStr2 = dateStr(yesterdayOfToday2)
-    if (hour >= 22 && checkedToday.value && lastNightDate !== todayStr) {
-      const nightStreak = getRepeatCount('night_streak') + 1
-      repeatableCounts.value['night_streak'] = nightStreak
-      repeatableCounts.value['night_streak_date'] = todayStr
-      if (nightStreak >= 7 && unlockAchievement('night_owl_7', 100)) newToasts.push('🏆 暗夜行者！连续7天深夜+100币')
-    } else if (lastNightDate !== todayStr && lastNightDate !== yesterdayStr2 && lastNightDate !== '') {
-      repeatableCounts.value['night_streak'] = 0
-    }
 
     // ===== 循环成就：每周满勤 =====
     const lastPerfectWeekDate = repeatableCounts.value['perfect_week_date'] || ''
@@ -366,78 +420,56 @@ export const useGameStore = defineStore('game', () => {
       if (count >= 12 && unlockAchievement('perfect_month_12', 3000)) newToasts.push('🏆 年度月月满勤！+3000币')
     }
 
-    // ===== 循环成就：金币里程碑（每500币循环） =====
-    const coinMilestone = Math.floor(coins.value / 500)
-    const prevMilestone = getRepeatCount('coin_milestone')
-    if (coinMilestone > prevMilestone) {
-      repeatableCounts.value['coin_milestone'] = coinMilestone
-      // 每突破一个500币里程碑给奖励
-      const bonus = 20 * coinMilestone
-      coins.value += bonus
-      newToasts.push(`💰 金币里程碑！累计${coinMilestone * 500}币 +${bonus}币`)
+    // ===== 心情成就 =====
+    if (usedMoods.value.length >= 1 && unlockAchievement('mood_first', 10)) newToasts.push('😊 情绪初探！+10币')
+    if (usedMoods.value.length >= 5 && unlockAchievement('mood_all_5', 60)) newToasts.push('🎨 五味杂陈！+60币')
+    if (moodStreakDays.value.count >= 7 && unlockAchievement('mood_streak_7', 80)) newToasts.push('📖 情绪日记家！+80币')
+
+    // ===== 消费成就 =====
+    if (totalSpent.value >= 100 && unlockAchievement('spend_100', 20)) newToasts.push('💸 初次破费！+20币')
+    if (totalSpent.value >= 500 && unlockAchievement('spend_500', 60)) newToasts.push('🛍️ 购物达人！+60币')
+    if (totalSpent.value >= 2000 && unlockAchievement('spend_2000', 150)) newToasts.push('💳 剁手党！+150币')
+    if (totalSpent.value >= 5000 && unlockAchievement('spend_5000', 400)) newToasts.push('💎 土豪降临！+400币')
+
+    // ===== 日记深度成就 =====
+    if (diaryStreak.value.count >= 7 && unlockAchievement('diary_streak_7', 80)) newToasts.push('✍️ 笔耕不辍！+80币')
+    if (diaryStreak.value.count >= 30 && unlockAchievement('diary_streak_30', 300)) newToasts.push('📕 日记人生！+300币')
+
+    // ===== 收集成就 =====
+    try {
+      const shopData = loadState(SHOP_KEY)
+      if (shopData) {
+        const owned = shopData.purchasedItems || []
+        const themeCount = owned.filter(id => { const item = catalog.find(i => i.id === id); return item && item.category === 'theme' }).length
+        const effectCount = owned.filter(id => { const item = catalog.find(i => i.id === id); return item && item.category === 'effect' }).length
+        const frameCount = owned.filter(id => { const item = catalog.find(i => i.id === id); return item && item.category === 'frame' }).length
+        if (themeCount >= 3 && unlockAchievement('own_theme_3', 60)) newToasts.push('🎨 主题收藏家！+60币')
+        if (effectCount >= 3 && unlockAchievement('own_effect_3', 60)) newToasts.push('✨ 特效大师！+60币')
+        if (frameCount >= 5 && unlockAchievement('own_all_frame', 100)) newToasts.push('🖼️ 相框全集！+100币')
+      }
+    } catch {}
+
+    // ===== 组合成就 =====
+    if (weekendCheckins.value >= 10 && unlockAchievement('weekend_10', 80)) newToasts.push('⚔️ 周末战士！+80币')
+    if (quoteCollectStreak.value.count >= 3 && unlockAchievement('quote_daily', 40)) newToasts.push('📰 语录鉴赏家！+40币')
+
+    // 完美一天
+    const cd = comboDailyDone.value
+    if (cd.date === today() && cd.checkin && cd.diary && cd.quote) {
+      if (unlockAchievement('combo_daily', 40)) newToasts.push('🌟 完美一天！+40币')
     }
 
-    // ===== 循环成就：累计打卡里程碑（每100天循环） =====
-    const totalMilestone = Math.floor(total / 100)
-    const prevTotalMilestone = getRepeatCount('total_milestone')
-    if (totalMilestone > prevTotalMilestone) {
-      repeatableCounts.value['total_milestone'] = totalMilestone
-      const bonus = 50 * totalMilestone
-      coins.value += bonus
-      newToasts.push(`📅 打卡里程碑！累计${totalMilestone * 100}天 +${bonus}币`)
+    // 触底反弹
+    if (!coinRecoveryTriggered.value) {
+      if (coins.value < minCoinsEver.value) minCoinsEver.value = coins.value
+      if (minCoinsEver.value <= 10 && coins.value >= 500) {
+        coinRecoveryTriggered.value = true
+        if (unlockAchievement('coin_recovery', 100)) newToasts.push('📈 触底反弹！+100币')
+      }
     }
 
     pendingToasts = [...pendingToasts, ...newToasts]
     return newToasts
-  }
-
-  const hiddenDialoguePool = [
-    { id: 'dlg_1', text: '你知道吗？我其实是从白垩纪来的~' },
-    { id: 'dlg_2', text: '嘘...我藏了一颗星星给你' },
-    { id: 'dlg_3', text: '每次你来打卡，我尾巴就会摇一下' },
-    { id: 'dlg_4', text: '听说今天有流星雨，一起看？' },
-    { id: 'dlg_5', text: '你是不是偷偷变厉害了？我感觉到了！' },
-    { id: 'dlg_6', text: '如果我是人类，一定也天天打卡' },
-    { id: 'dlg_7', text: '别走！再陪我聊五毛钱的~' },
-    { id: 'dlg_8', text: '我觉得...你比昨天更好看了（恐龙直觉）' },
-  ]
-
-  function triggerEvent() {
-    const roll = Math.random() * 100
-    let event
-    if (roll < 5) {
-      // 彩蛋事件 5%
-      const bonus = 50
-      coins.value += bonus
-      event = { type: 'rare', icon: '🌟', title: '彩蛋事件！', desc: '发现了一颗稀有宝石！', reward: `+${bonus} 币` }
-    } else if (roll < 20) {
-      // 隐藏对话 15% (5~20)
-      const uncollected = hiddenDialoguePool.filter(d => !collectedDialogues.value.includes(d.id))
-      const dialogue = uncollected.length > 0
-        ? uncollected[Math.floor(Math.random() * uncollected.length)]
-        : hiddenDialoguePool[Math.floor(Math.random() * hiddenDialoguePool.length)]
-      if (!collectedDialogues.value.includes(dialogue.id)) {
-        collectedDialogues.value.push(dialogue.id)
-      }
-      event = { type: 'dialogue', icon: '🎭', title: '隐藏对话', desc: dialogue.text, reward: null }
-    } else if (roll < 35) {
-      // 蛋孵化 15% (20~35)
-      const fragId = `frag_${collectedFragments.value.length + 1}`
-      if (collectedFragments.value.length < 12) {
-        collectedFragments.value.push(fragId)
-      }
-      event = { type: 'hatch', icon: '🥚', title: '蛋孵化事件！', desc: `获得了恐龙进化碎片！(${collectedFragments.value.length}/12)`, reward: null }
-    } else if (roll < 70) {
-      // 好运事件 35% (35~70)
-      const bonus = 10 + Math.floor(Math.random() * 21)
-      coins.value += bonus
-      event = { type: 'lucky', icon: '🎁', title: '好运降临！', desc: '今天运气不错哦~', reward: `+${bonus} 币` }
-    } else {
-      // 普通事件 25% (70~100)
-      event = { type: 'normal', icon: '⚡', title: '平稳日常', desc: '平平淡淡才是真~', reward: null }
-    }
-    dailyEvent.value = { date: today(), event }
-    return event
   }
 
   function popToasts() {
@@ -451,17 +483,92 @@ export const useGameStore = defineStore('game', () => {
     coins.value = 0
     achievements.value = []
     collectedDialogues.value = []
-    collectedFragments.value = []
-    dailyEvent.value = null
     journal.value = []
     favoriteQuotes.value = []
     repeatableCounts.value = {}
+    totalSpent.value = 0
+    hasEarlyBird.value = false
+    hasNightOwl.value = false
+    timeLetters.value = []
+    coinLog.value = []
+    usedMoods.value = []
+    moodStreakDays.value = { count: 0, lastDate: '' }
+    weekendCheckins.value = 0
+    letterSentCount.value = 0
+    letterOpenedCount.value = 0
+    diaryStreak.value = { count: 0, lastDate: '' }
+    quoteCollectStreak.value = { count: 0, lastDate: '' }
+    comboDailyDone.value = { checkin: false, diary: false, quote: false, date: '' }
+    minCoinsEver.value = 999999
+    coinRecoveryTriggered.value = false
     pendingToasts = []
   }
 
   function addJournal(text, mood = null) {
     journal.value.unshift({ text, date: today(), time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), mood: mood || null })
+
+    // 心情追踪
+    if (mood && !usedMoods.value.includes(mood)) {
+      usedMoods.value.push(mood)
+    }
+    // 心情连续天数
+    if (mood) {
+      const msd = moodStreakDays.value
+      if (msd.lastDate !== today()) {
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`
+        if (msd.lastDate === yStr || msd.lastDate === '') {
+          moodStreakDays.value = { count: msd.count + 1, lastDate: today() }
+        } else {
+          moodStreakDays.value = { count: 1, lastDate: today() }
+        }
+      }
+    }
+
+    // 日记连续天数
+    const ds = diaryStreak.value
+    if (ds.lastDate !== today()) {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`
+      if (ds.lastDate === yStr || ds.lastDate === '') {
+        diaryStreak.value = { count: ds.count + 1, lastDate: today() }
+      } else {
+        diaryStreak.value = { count: 1, lastDate: today() }
+      }
+    }
+
+    // 心情过山车：同一天写2条不同心情
+    if (mood) {
+      const todayJournals = journal.value.filter(j => j.date === today() && j.mood)
+      const uniqueMoods = new Set(todayJournals.map(j => j.mood))
+      if (uniqueMoods.size >= 2) {
+        if (unlockAchievement('mood_swing', 30)) pendingToasts.push('🎢 心情过山车！+30币')
+      }
+    }
+
+    // 深夜独白
+    const hour = new Date().getHours()
+    if (hour >= 0 && hour < 5) {
+      if (unlockAchievement('diary_night', 25)) pendingToasts.push('🌃 深夜独白！+25币')
+    }
+
+    // 千字文
+    if (text.length >= 200) {
+      if (unlockAchievement('diary_long', 30)) pendingToasts.push('📜 千字文！+30币')
+    }
+
+    // 组合成就：日记部分
+    const cd = comboDailyDone.value
+    if (cd.date !== today()) {
+      comboDailyDone.value = { checkin: false, diary: true, quote: false, date: today() }
+    } else {
+      cd.diary = true
+    }
+
     checkAchievements()
+    return popToasts()
   }
 
   function removeJournal(index) {
@@ -471,6 +578,28 @@ export const useGameStore = defineStore('game', () => {
   function addFavoriteQuote(text) {
     if (!favoriteQuotes.value.includes(text)) {
       favoriteQuotes.value.unshift(text)
+
+      // 语录收藏连续天数
+      const qs = quoteCollectStreak.value
+      if (qs.lastDate !== today()) {
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`
+        if (qs.lastDate === yStr || qs.lastDate === '') {
+          quoteCollectStreak.value = { count: qs.count + 1, lastDate: today() }
+        } else {
+          quoteCollectStreak.value = { count: 1, lastDate: today() }
+        }
+      }
+
+      // 组合成就：语录部分
+      const cd = comboDailyDone.value
+      if (cd.date !== today()) {
+        comboDailyDone.value = { checkin: false, diary: false, quote: true, date: today() }
+      } else {
+        cd.quote = true
+      }
+
       checkAchievements()
     }
   }
@@ -493,8 +622,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // 获取某天的心情（取最后一条有心情的日记）
-  function getDayMood(dateStr) {
-    const entry = journal.value.find(j => j.date === dateStr && j.mood)
+  function getDayMood(d) {
+    const entry = journal.value.find(j => j.date === d && j.mood)
     return entry ? entry.mood : null
   }
 
@@ -511,12 +640,24 @@ export const useGameStore = defineStore('game', () => {
       openDate,
       opened: false,
     })
+    letterSentCount.value++
+    if (unlockAchievement('letter_first', 15)) pendingToasts.push('✉️ 时光信使！+15币')
+    if (letterSentCount.value >= 5) {
+      if (unlockAchievement('letter_5', 50)) pendingToasts.push('📬 书信往来！+50币')
+    }
+    // 写给未来的我：30天后开启
+    const daysDiff = Math.ceil((new Date(openDate) - new Date()) / (1000 * 60 * 60 * 24))
+    if (daysDiff >= 30) {
+      if (unlockAchievement('letter_to_self', 40)) pendingToasts.push('⏳ 写给未来的我！+40币')
+    }
   }
 
   function openTimeLetter(id) {
     const letter = timeLetters.value.find(l => l.id === id)
     if (letter && letter.openDate <= today()) {
       letter.opened = true
+      letterOpenedCount.value++
+      if (unlockAchievement('letter_open', 15)) pendingToasts.push('💌 拆信的喜悦！+15币')
     }
   }
 
@@ -529,17 +670,42 @@ export const useGameStore = defineStore('game', () => {
   const openableLetters = computed(() => timeLetters.value.filter(l => !l.opened && l.openDate <= today()))
   const openedLetters = computed(() => timeLetters.value.filter(l => l.opened))
 
+  // 成就奖励总额
+  const ACH_REWARDS = {
+    streak_3: 20, streak_7: 50, streak_14: 100, streak_30: 200, streak_100: 500, streak_365: 2000,
+    total_10: 30, total_50: 150, total_100: 300, total_365: 1000, total_500: 1500, total_1000: 3000,
+    coin_100: 30, coin_500: 80, coin_1000: 150, coin_5000: 500, coin_10000: 1000,
+    journal_5: 20, journal_20: 60, journal_50: 150, journal_100: 300,
+    quote_collect: 10, quote_5: 40, quote_10: 80, quote_20: 150,
+    early_bird: 15, night_owl: 15, weekend: 25, dialogue_all: 100,
+    early_bird_7: 100, early_bird_30: 500, night_owl_7: 100, night_owl_30: 500,
+    perfect_week_1: 50, perfect_week_4: 150, perfect_week_12: 500, perfect_week_52: 2000,
+    perfect_month_1: 200, perfect_month_3: 500, perfect_month_6: 1000, perfect_month_12: 3000,
+    mood_first: 10, mood_all_5: 60, mood_streak_7: 80, mood_swing: 30,
+    spend_100: 20, spend_500: 60, spend_2000: 150, spend_5000: 400,
+    letter_first: 15, letter_open: 15, letter_5: 50, letter_to_self: 40,
+    diary_streak_7: 80, diary_streak_30: 300, diary_night: 25, diary_long: 30,
+    own_theme_3: 60, own_effect_3: 60, own_all_frame: 100,
+    combo_daily: 40, weekend_10: 80, coin_recovery: 100, quote_daily: 40,
+  }
+  const achievementRewardTotal = computed(() =>
+    achievements.value.reduce((sum, a) => sum + (ACH_REWARDS[a.id] || 0), 0)
+  )
+  const totalEarned = computed(() => coins.value + totalSpent.value)
+
   return {
     checkins, coins, achievements,
-    collectedDialogues, collectedFragments, dailyEvent,
+    collectedDialogues,
     journal, favoriteQuotes,
     checkedToday, streakDays, totalCheckins,
     totalSpent, hasEarlyBird, hasNightOwl,
-    checkIn, triggerEvent, getDialogue, hasAchievement, unlockAchievement,
+    checkIn, getDialogue, hasAchievement, unlockAchievement,
     checkAchievements, popToasts, resetState,
     addJournal, removeJournal, addFavoriteQuote, removeFavoriteQuote,
     getMoodStats, getDayMood, activeSeasonalEvent,
     timeLetters, addTimeLetter, openTimeLetter, removeTimeLetter,
     pendingLetters, openableLetters, openedLetters,
+    achievementRewardTotal, totalEarned,
+    coinLog, logCoin,
   }
 })

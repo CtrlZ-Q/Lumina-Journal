@@ -9,13 +9,13 @@
   --c-accent-light: #ff8fa0;
   --c-gold: #d4a853;
   --c-gold-light: #f0d48a;
-  --c-surface: rgba(255,255,255,0.82);
-  --c-surface-hover: rgba(255,255,255,0.95);
-  --c-text: #1a1a2e;
-  --c-text-secondary: #7a7a8e;
-  --c-text-muted: #b0b0c0;
-  --c-border: rgba(0,0,0,0.05);
-  --c-shadow: rgba(0,0,0,0.06);
+  --c-surface: rgba(235,228,218,0.92);
+  --c-surface-hover: rgba(235,228,218,0.97);
+  --c-text: #5a5a66;
+  --c-text-secondary: #8a8a98;
+  --c-text-muted: #b8b8c4;
+  --c-border: rgba(0,0,0,0.03);
+  --c-shadow: rgba(0,0,0,0.03);
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 24px;
@@ -29,7 +29,7 @@
 
 body {
   font-family: var(--font-body);
-  background: linear-gradient(160deg, #f8f6f3 0%, #f3efe9 40%, #ede8e2 100%);
+  background: linear-gradient(160deg, #e5ded4 0%, #e0d9ce 40%, #dbd4c8 100%);
   color: var(--c-text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -94,8 +94,8 @@ input, textarea {
 
 /* 玻璃质感 */
 .glass {
-  background: rgba(255,255,255,0.6);
+  background: rgba(235,228,218,0.78);
   backdrop-filter: blur(24px) saturate(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  border: 1px solid rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
 }

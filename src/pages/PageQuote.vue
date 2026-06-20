@@ -54,14 +54,18 @@ const quoteFontSize = computed(() => {
 })
 
 const hiddenDialogues = [
-  '你知道吗？我其实是从白垩纪来的~',
-  '嘘...我藏了一颗星星给你',
-  '每次你来打卡，我尾巴就会摇一下',
-  '听说今天有流星雨，一起看？',
-  '你是不是偷偷变厉害了？我感觉到了！',
-  '如果我是人类，一定也天天打卡',
-  '别走！再陪我聊五毛钱的~',
-  '我觉得...你比昨天更好看了（恐龙直觉）',
+  { id: 'hd_theme_aurora', text: '极光之下，万物皆可期~' },
+  { id: 'hd_theme_galaxy', text: '银河深处，藏着你的专属星辰✨' },
+  { id: 'hd_theme_black', text: '星空黑的秘密：黑夜给了我黑色的眼睛~' },
+  { id: 'hd_theme_cyber', text: '赛博朋克：欢迎来到2077年！' },
+  { id: 'hd_effect_galaxy', text: '银河漩涡启动！准备穿越时空~' },
+  { id: 'hd_effect_aurora', text: '极光绽放，好运将至！' },
+  { id: 'hd_effect_magic', text: '魔法阵展开！今日份的魔法已到账~' },
+  { id: 'hd_frame_aurora', text: '极光相框：每张周报都是一幅画~' },
+  { id: 'hd_frame_galaxy', text: '银河相框：你的周报闪闪发光！' },
+  { id: 'hd_frame_gold', text: '金光闪闪！土豪专属周报~' },
+  { id: 'hd_sound_space', text: '太空音效：3...2...1...发射！🚀' },
+  { id: 'hd_sound_crystal', text: '水晶之音，清脆悦耳~' },
 ]
 
 // 语录类别选择
@@ -157,13 +161,13 @@ const quoteCategories = computed(() => {
         <span class="section-icon">🎭</span>
         <span>隐藏台词</span>
       </div>
-      <span class="section-count">{{ store.collectedDialogues.length }}/8</span>
+      <span class="section-count">{{ store.collectedDialogues.length }}/{{ hiddenDialogues.length }}</span>
     </div>
 
     <div class="dialogue-grid">
-      <div v-for="i in 8" :key="i" class="dialogue-item" :class="{ unlocked: store.collectedDialogues.includes(`dlg_${i}`) }">
-        <div class="dialogue-icon">{{ store.collectedDialogues.includes(`dlg_${i}`) ? '🎭' : '❓' }}</div>
-        <div class="dialogue-text">{{ store.collectedDialogues.includes(`dlg_${i}`) ? hiddenDialogues[i-1] : '未解锁' }}</div>
+      <div v-for="hd in hiddenDialogues" :key="hd.id" class="dialogue-item" :class="{ unlocked: store.collectedDialogues.includes(hd.id) }">
+        <div class="dialogue-icon">{{ store.collectedDialogues.includes(hd.id) ? '🎭' : '❓' }}</div>
+        <div class="dialogue-text">{{ store.collectedDialogues.includes(hd.id) ? hd.text : '未解锁' }}</div>
       </div>
     </div>
   </div>
@@ -238,7 +242,7 @@ const quoteCategories = computed(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #1a1a1a;
+  color: #4a4a56;
   text-shadow: 0 1px 0 rgba(0,0,0,0.05);
   word-break: break-all;
 }
@@ -294,7 +298,7 @@ const quoteCategories = computed(() => {
   gap: 8px;
   font-size: 16px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #4a4a56;
 }
 .section-icon { font-size: 18px; }
 .section-count {
@@ -319,13 +323,13 @@ const quoteCategories = computed(() => {
   border: 1.5px solid #eee;
   border-radius: 12px;
   font-size: 14px;
-  color: #333;
+  color: #5a5a66;
   background: #fafafa;
   outline: none;
   transition: border-color 0.3s, box-shadow 0.3s;
 }
 .quote-input:focus { border-color: var(--theme-accent, #ff6b8a); background: #fff; box-shadow: 0 0 0 4px rgba(255,107,138,0.08); }
-.quote-input::placeholder { color: #ccc; }
+.quote-input::placeholder { color: #999; }
 .quote-input-btn {
   padding: 12px 20px;
   border: none;
@@ -342,7 +346,7 @@ const quoteCategories = computed(() => {
 .quote-input-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,107,138,0.35); }
 
 /* 语录偏好设置 */
-.pref-hint { font-size: 13px; color: #999; margin-bottom: 12px; }
+.pref-hint { font-size: 13px; color: #888; margin-bottom: 12px; }
 .pref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .pref-btn {
   display: flex;
@@ -356,10 +360,10 @@ const quoteCategories = computed(() => {
   transition: border-color 0.2s, background 0.2s;
   font-size: 14px;
 }
-.pref-btn:hover { border-color: #ccc; }
+.pref-btn:hover { border-color: #999; }
 .pref-btn.active { border-color: var(--theme-accent, #667eea); background: rgba(102,126,234,0.06); }
 .pref-icon { font-size: 16px; }
-.pref-name { font-weight: 600; color: #333; }
+.pref-name { font-weight: 600; color: #5a5a66; }
 .pref-btn.active .pref-name { color: var(--theme-accent, #667eea); }
 .pref-actions { display: flex; gap: 8px; }
 .pref-action-btn {
@@ -389,7 +393,7 @@ const quoteCategories = computed(() => {
 .quote-card-text {
   flex: 1;
   font-size: 20px;
-  color: #444;
+  color: #5a5a66;
   font-family: 'STXingkai', '华文行楷', 'XingKai', '行楷', 'STKaiti', 'KaiTi', '楷体', 'SimSun', cursive, serif;
   line-height: 1.7;
   word-break: break-all;
@@ -401,7 +405,7 @@ const quoteCategories = computed(() => {
   border: none;
   border-radius: 8px;
   background: none;
-  color: #ccc;
+  color: #999;
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -417,7 +421,7 @@ const quoteCategories = computed(() => {
   padding: 24px 0;
 }
 .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.5; }
-.empty-text { font-size: 14px; color: #ccc; }
+.empty-text { font-size: 14px; color: #999; }
 
 /* 隐藏台词网格 */
 .dialogue-grid {
@@ -441,10 +445,10 @@ const quoteCategories = computed(() => {
 .dialogue-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 .dialogue-text {
   font-size: 13px;
-  color: #ccc;
+  color: #999;
   line-height: 1.5;
 }
-.dialogue-item.unlocked .dialogue-text { color: #444; font-style: italic; }
+.dialogue-item.unlocked .dialogue-text { color: #5a5a66; font-style: italic; }
 
 /* 语录弹窗 */
 .quote-modal-mask {
@@ -468,7 +472,7 @@ const quoteCategories = computed(() => {
   user-select: none; margin-top: -8px;
 }
 .quote-modal-text {
-  font-size: 24px; line-height: 1.8; color: #1a1a1a;
+  font-size: 24px; line-height: 1.8; color: #4a4a56;
   font-family: 'STXingkai', '华文行楷', 'XingKai', '行楷', 'STKaiti', 'KaiTi', '楷体', 'SimSun', cursive, serif;
   letter-spacing: 2px; padding: 12px 0;
   word-break: break-all;
