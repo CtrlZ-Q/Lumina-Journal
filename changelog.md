@@ -1,5 +1,52 @@
 # 更新日志
 
+## v3.1.0 — 称号系统修复 & 成就系统全面校准 & 隐藏台词修复
+
+### 🐛 Bug 修复
+
+#### 称号系统（核心修复）
+| 问题 | 文件 | 修复 |
+|------|------|------|
+| 签到后称号不解锁 | `PageHome.vue` | 签到/日记后补 `checkTitles()` 调用 |
+| 收藏语录后称号不解锁 | `PageQuote.vue` | 收藏后补 `checkTitles()` 调用 |
+| 寄信/开信后称号不解锁 | `PageCalendar.vue` | 寄信/开信后补 `checkTitles()` 调用 |
+| App 启动时已有条件的称号不解锁 | `App.vue` | `onMounted` 补检 `checkTitles()` |
+| `buyTitle()` 级联称号 toast 丢失 | `shop.js` | 捕获 `checkTitles()` 返回值 |
+| 抽奖消费不计入 `totalSpent` | `shop.js` | `pullGacha`/`pullPremiumGacha` 补 `totalSpent += cost` |
+
+#### 成就系统
+| 问题 | 文件 | 修复 |
+|------|------|------|
+| `weekend` 成就 1 次就触发（描述说 2 天） | `game.js` | `>= 1` → `>= 2` |
+| `quote_daily` 成就 7 天才触发（描述说 3 天） | `game.js` | `>= 7` → `>= 3` |
+| `coin_recovery` 成就条件与描述不符 | `game.js` | `<= 0 && > 0` → `<= 10 && >= 500` |
+| `diary_long` 成就 200 字就触发（描述说超过 200） | `game.js` | `>= 200` → `> 200` |
+| 道具使用后成就 toast 丢失 | `PageShop.vue` | 补 `popToasts()` + emit |
+| 寄信/开信成就不检测 | `game.js` | `addTimeLetter`/`openTimeLetter` 补 `checkAchievements()` |
+| `quote_daily` toast 文案写的"7天" | `game.js` | 改为"3天" |
+
+#### 隐藏台词系统
+| 问题 | 文件 | 修复 |
+|------|------|------|
+| `checkHiddenDialogues()` 从未被调用 | `shop.js` | 在 `buyItem`/`buyLimitedItem`/`pullGacha`/`pullPremiumGacha` 中补调用 |
+| `dialogue_all` 成就永远解不了 | `shop.js` | 隐藏台词解锁后自动触发 `checkAchievements()` |
+
+#### 其他
+| 问题 | 文件 | 修复 |
+|------|------|------|
+| `buyLimitedItem` 消耗品重复购买被拒 | `shop.js` | 补 `item.type !== 'consumable'` 检查 |
+| `extraQuotes` 空数据可能崩溃 | `shop.js` | 补 `?.data?.quotes \|\| []` 空值保护 |
+
+### 🎨 描述修正
+
+| 成就 | 原描述 | 新描述 | 原因 |
+|------|--------|--------|------|
+| `coin_100/500/1000/5000/10000` | 持有 X 金币 | 累计获得 X 金币 | 代码检查的是 `coins + totalSpent` |
+| `weekend` | 周末连续打卡 2 天 | 累计周末打卡 2 天 | 计数器不区分连续与否 |
+| `own_all_frame` | 拥有 5 个以上周报相框 | 拥有全部周报相框 | 代码要求全部拥有 |
+
+---
+
 ## v3.0.0 — 视觉效果系统 & 日历重设计 & 全面 Bug 修复
 
 ### ✨ 功能新增

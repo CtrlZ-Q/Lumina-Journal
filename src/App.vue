@@ -11,11 +11,17 @@ const shop = useShopStore()
 const loaded = ref(false)
 const pageBg = ref(null)
 provide('setAppPageBg', (bg) => { pageBg.value = bg })
+provide('showToast', showToast)
 const toastQueue = ref([])
 let toastId = 0
 
 onMounted(() => {
-  setTimeout(() => loaded.value = true, 50)
+  setTimeout(() => {
+    loaded.value = true
+    // 启动时补检称号解锁（防止条件已满足但未触发）
+    const newTitles = shop.checkTitles()
+    newTitles.forEach(t => showToast(`🏅 获得称号「${t.name}」！`))
+  }, 50)
 })
 
 const pendingToasts = []

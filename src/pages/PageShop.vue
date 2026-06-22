@@ -362,6 +362,8 @@ function handleUse(item) {
   // 非赌博道具立即检查成就；赌博道具在动画回调中检查
   if (!['random_box', 'mystery_box', 'wheel', 'golden_touch'].includes(propKey)) {
     gameStore.checkAchievements()
+    const toasts = gameStore.popToasts()
+    toasts.forEach(msg => emit('show-toast', msg))
   }
 }
 
@@ -378,6 +380,8 @@ function showGambleAnim(item, icon, callback) {
       showGamble.value = false
       showPurchase.value = true
       gameStore.checkAchievements()
+      const toasts = gameStore.popToasts()
+      toasts.forEach(msg => emit('show-toast', msg))
     }, 1200)
   }, 1500)
 }

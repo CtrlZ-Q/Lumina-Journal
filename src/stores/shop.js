@@ -504,7 +504,7 @@ export const useShopStore = defineStore('shop', () => {
         if (selected.length > 0 && !selected.includes(id)) return false
         return true
       })
-      .flatMap(id => getItem(id).data.quotes)
+      .flatMap(id => getItem(id)?.data?.quotes || [])
   })
 
   // 获取称号信息
@@ -538,8 +538,9 @@ export const useShopStore = defineStore('shop', () => {
     ownedTitles.value.push(titleId)
     gameStore.checkAchievements()
     const achievementToasts = gameStore.popToasts()
-    checkTitles()
-    return { ok: true, toasts: [`🏅 获得称号「${t.name}」！`, ...achievementToasts] }
+    const newTitles = checkTitles()
+    const titleToasts = newTitles.map(nt => `🏅 获得称号「${nt.name}」！`)
+    return { ok: true, toasts: [`🏅 获得称号「${t.name}」！`, ...titleToasts, ...achievementToasts] }
   }
 
   // 装备称号
@@ -580,6 +581,7 @@ export const useShopStore = defineStore('shop', () => {
       purchasedItems.value.push(itemId)
     }
     gameStore.checkAchievements()
+    checkHiddenDialogues()
     const achievementToasts = gameStore.popToasts()
     const newTitles = checkTitles()
     const toasts = []
@@ -593,7 +595,7 @@ export const useShopStore = defineStore('shop', () => {
   function buyLimitedItem(limitedItem) {
     const item = getItem(limitedItem.id)
     if (!item) return { ok: false, reason: 'not_found' }
-    if (isOwned(limitedItem.id)) return { ok: false, reason: 'owned' }
+    if (item.type !== 'consumable' && isOwned(limitedItem.id)) return { ok: false, reason: 'owned' }
     const discountedPrice = Math.floor(item.price * (100 - limitedItem.discount) / 100)
     const gameStore = useGameStore()
     if (gameStore.coins < discountedPrice) return { ok: false, reason: 'insufficient' }
@@ -606,6 +608,7 @@ export const useShopStore = defineStore('shop', () => {
       purchasedItems.value.push(limitedItem.id)
     }
     gameStore.checkAchievements()
+    checkHiddenDialogues()
     const achievementToasts = gameStore.popToasts()
     const newTitles = checkTitles()
     const toasts = [`🎉 限时折扣购买成功！`]
@@ -634,6 +637,7 @@ export const useShopStore = defineStore('shop', () => {
     const cost = times === 5 ? 225 : 50
     if (gameStore.coins < cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= cost
+    gameStore.totalSpent += cost
     gameStore.logCoin(-cost, `🎰 普通抽奖×${times}`)
     totalGachaPulls.value += times
 
@@ -682,6 +686,7 @@ export const useShopStore = defineStore('shop', () => {
 
     gachaHistory.value = results
     gameStore.checkAchievements()
+    checkHiddenDialogues()
     const achievementToasts = gameStore.popToasts()
     const newTitles = checkTitles()
     const toasts = []
@@ -701,6 +706,7 @@ export const useShopStore = defineStore('shop', () => {
     const cost = times === 5 ? 900 : 200
     if (gameStore.coins < cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= cost
+    gameStore.totalSpent += cost
     gameStore.logCoin(-cost, `💎 高级抽奖×${times}`)
     totalGachaPulls.value += times
 
@@ -758,6 +764,7 @@ export const useShopStore = defineStore('shop', () => {
 
     gachaHistory.value = results
     gameStore.checkAchievements()
+    checkHiddenDialogues()
     const achievementToasts = gameStore.popToasts()
     const newTitles = checkTitles()
     const toasts = []

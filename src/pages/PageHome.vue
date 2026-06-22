@@ -36,6 +36,9 @@ function submitJournal() {
   newJournal.value = ''
   selectedMood.value = null
   emit('show-toast', '📝 记录已保存')
+  // 检查称号解锁
+  const newTitles = shop.checkTitles()
+  newTitles.forEach(t => toasts.push(`🏅 获得称号「${t.name}」！`))
   // 显示日记触发的成就 toast
   if (toasts && toasts.length > 0) {
     toasts.forEach((t, i) => setTimeout(() => emit('show-toast', t), (i + 1) * 1500))
@@ -232,6 +235,9 @@ function handleCheckin() {
     if (sound) playSound(sound)
     playCheckinEffect(result)
     const toasts = result.toasts || []
+    // 检查称号解锁
+    const newTitles = shop.checkTitles()
+    newTitles.forEach(t => toasts.push(`🏅 获得称号「${t.name}」！`))
     toasts.forEach((t, i) => setTimeout(() => emit('show-toast', t), (i + 1) * 1500))
   } else {
     emit('show-toast', '✅ 今天已经打卡过啦~')

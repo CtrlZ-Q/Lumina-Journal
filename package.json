@@ -1,7 +1,7 @@
 {
   "name": "dino-app",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "🌅 逐光手帐 - 每日打卡桌面应用",
   "license": "GPL-3.0",
   "keywords": [

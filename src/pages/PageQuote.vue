@@ -18,6 +18,9 @@ function submitQuote() {
   const toasts = store.addFavoriteQuote(text) || []
   newQuote.value = ''
   emit('show-toast', '⭐ 语录已收藏')
+  // 检查称号解锁
+  const newTitles = shop.checkTitles()
+  newTitles.forEach(t => emit('show-toast', `🏅 获得称号「${t.name}」！`))
   toasts.forEach(t => emit('show-toast', t))
 }
 
@@ -92,7 +95,7 @@ const quoteCategories = computed(() => {
           <span class="action-icon">🔄</span>
           <span>换一条</span>
         </button>
-        <button class="quote-action-btn fav" @click="(() => { const t = store.addFavoriteQuote(currentQuote); emit('show-toast', '⭐ 语录已收藏'); t?.forEach(msg => emit('show-toast', msg)) })()">
+        <button class="quote-action-btn fav" @click="(() => { const t = store.addFavoriteQuote(currentQuote); emit('show-toast', '⭐ 语录已收藏'); const nt = shop.checkTitles(); nt.forEach(t => emit('show-toast', `🏅 获得称号「${t.name}」！`)); t?.forEach(msg => emit('show-toast', msg)) })()">
           <span class="action-icon">⭐</span>
           <span>收藏</span>
         </button>

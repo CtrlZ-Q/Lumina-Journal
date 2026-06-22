@@ -412,7 +412,7 @@ export const useGameStore = defineStore('game', () => {
     if (fq >= 20) tryUnlock('quote_20', 150)
 
     // 周末打卡
-    if (weekendCheckins.value >= 1) tryUnlock('weekend', 25)
+    if (weekendCheckins.value >= 2) tryUnlock('weekend', 25)
     if (weekendCheckins.value >= 10) tryUnlock('weekend_10', 80)
 
     // 满勤周（累计）
@@ -463,7 +463,7 @@ export const useGameStore = defineStore('game', () => {
     if (diaryStreak.value.count >= 30) tryUnlock('diary_streak_30', 300)
 
     // 语录收藏连续天数
-    if (quoteCollectStreak.value.count >= 7) tryUnlock('quote_daily', 40)
+    if (quoteCollectStreak.value.count >= 3) tryUnlock('quote_daily', 40)
 
     // 组合成就：签到+日记+语录同日完成
     const cd = comboDailyDone.value
@@ -472,7 +472,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 金币回升
-    if (!coinRecoveryTriggered.value && minCoinsEver.value <= 0 && coins.value > 0) {
+    if (!coinRecoveryTriggered.value && minCoinsEver.value <= 10 && coins.value >= 500) {
       coinRecoveryTriggered.value = true
       tryUnlock('coin_recovery', 100)
     }
@@ -517,7 +517,7 @@ export const useGameStore = defineStore('game', () => {
         spend_100: '🛒 初次消费！+20币', spend_500: '🛒 消费达人！+60币',
         spend_2000: '🛒 购物狂！+150币', spend_5000: '🛒 土豪！+400币',
         diary_streak_7: '📖 日记连续7天！+80币', diary_streak_30: '📖 日记连续30天！+300币',
-        quote_daily: '⭐ 语录连续7天！+40币', combo_daily: '🎯 每日三连！+40币',
+        quote_daily: '⭐ 语录连续3天！+40币', combo_daily: '🎯 每日三连！+40币',
         coin_recovery: '💪 金币回升！+100币',
         dialogue_all: '🎭 全部台词收集！+100币',
         own_theme_3: '🎨 拥有3个主题！+60币', own_effect_3: '✨ 拥有3个特效！+60币', own_all_frame: '🖼️ 全部相框收集！+100币',
@@ -630,7 +630,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 千字文
-    if (text.length >= 200) {
+    if (text.length > 200) {
       if (unlockAchievement('diary_long', 30)) pendingToasts.push('📜 千字文！+30币')
     }
 
@@ -726,6 +726,7 @@ export const useGameStore = defineStore('game', () => {
     if (daysDiff >= 30) {
       if (unlockAchievement('letter_to_self', 40)) pendingToasts.push('⏳ 写给未来的我！+40币')
     }
+    checkAchievements()
     return popToasts()
   }
 
@@ -735,6 +736,7 @@ export const useGameStore = defineStore('game', () => {
       letter.opened = true
       letterOpenedCount.value++
       if (unlockAchievement('letter_open', 15)) pendingToasts.push('💌 拆信的喜悦！+15币')
+      checkAchievements()
       return popToasts()
     }
     return []

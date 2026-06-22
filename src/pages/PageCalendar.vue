@@ -8,6 +8,7 @@ import MonthlyHistory from '../components/MonthlyHistory.vue'
 const store = useGameStore()
 const shop = useShopStore()
 const setAppPageBg = inject('setAppPageBg', null)
+const showToast = inject('showToast', () => {})
 
 const now = new Date()
 const year = ref(now.getFullYear())
@@ -55,18 +56,26 @@ function submitLetter() {
   const title = letterTitle.value.trim()
   const text = letterText.value.trim()
   if (!title || !text || !letterDate.value) return
-  store.addTimeLetter(title, text, letterDate.value)
+  const toasts = store.addTimeLetter(title, text, letterDate.value) || []
   letterTitle.value = ''
   letterText.value = ''
   letterDate.value = ''
   showWriteModal.value = false
+  // 检查称号解锁
+  const newTitles = shop.checkTitles()
+  newTitles.forEach(t => showToast(`🏅 获得称号「${t.name}」！`))
+  toasts.forEach(t => showToast(t))
 }
 
 function openLetter(letter) {
   if (letter.openDate > today()) return
-  store.openTimeLetter(letter.id)
+  const toasts = store.openTimeLetter(letter.id) || []
   selectedLetter.value = letter
   showLetterModal.value = true
+  // 检查称号解锁
+  const newTitles = shop.checkTitles()
+  newTitles.forEach(t => showToast(`🏅 获得称号「${t.name}」！`))
+  toasts.forEach(t => showToast(t))
 }
 
 function today() {
