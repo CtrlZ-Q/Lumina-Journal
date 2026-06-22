@@ -4,12 +4,14 @@ import { useGameStore } from '../stores/game'
 import { useShopStore } from '../stores/shop'
 import { catalog, categories, gachaPool, premiumGachaPool } from '../data/catalog'
 import { titleDefs } from '../stores/shop'
+import ShopItemAnim from '../components/ShopItemAnim.vue'
+import { getItemAnimation, shouldShowAnim } from '../data/shopAnimations'
 
 const gameStore = useGameStore()
 const shop = useShopStore()
 const emit = defineEmits(['show-toast'])
 
-const shopCategories = categories.filter(c => c.key !== 'title')
+const shopCategories = categories.filter(c => c.key !== 'title' && c.key !== 'mine')
 const activeCat = ref('all')
 const showPurchase = ref(false)
 const purchaseItem = ref(null)
@@ -19,9 +21,23 @@ const showGachaPreview = ref(false)
 const showPremiumGachaResult = ref(false)
 const premiumGachaResults = ref([])
 
+// 赌博动画
+const showGamble = ref(false)
+const gambleIcon = ref('')
+const gambleSpinning = ref(false)
+const gambleResult = ref(null)
+
+// 老虎机动画
+const showSlot = ref(false)
+const slotSpinning = ref(false)
+const slotIcons = ref(['🎰', '🎰', '🎰'])
+const slotResults = ref([])
+const slotIsPremium = ref(false)
+
 // 语录类别列表
 const quoteCategories = computed(() => {
-  return catalog.filter(i => i.category === 'quote').map(i => ({
+  const allItems = [...catalog, ...gachaPool, ...(premiumGachaPool || [])]
+  return allItems.filter(i => i.category === 'quote').map(i => ({
     id: i.id,
     name: i.name,
     icon: i.icon,
@@ -215,20 +231,38 @@ const gachaByRarity = computed(() => {
   }
 })
 
+const premiumGachaByRarity = computed(() => {
+  return {
+    legendary: (premiumGachaPool || []).filter(g => g.rarity === 'legendary'),
+    epic: (premiumGachaPool || []).filter(g => g.rarity === 'epic'),
+    rare: (premiumGachaPool || []).filter(g => g.rarity === 'rare'),
+  }
+})
+
+const activeGachaByRarity = computed(() => {
+  return activeCat.value === 'premium_gacha' ? premiumGachaByRarity.value : gachaByRarity.value
+})
+
 // 我的物品 — 按类别分组
 const myEquipableByCategory = computed(() => {
-  const catOrder = ['theme', 'effect', 'frame', 'quote', 'sound', 'calendar']
+  const catOrder = ['theme', 'effect', 'frame', 'sound', 'calendar']
   const groups = []
   for (const cat of catOrder) {
     const items = shop.purchasedItems
       .map(id => shop.getItem(id))
-      .filter(i => i && i.type === 'equipable' && i.category === cat)
+      .filter(i => i && (i.type === 'equipable' || i.type === 'collectible') && i.category === cat)
     if (items.length > 0) {
       const catInfo = categories.find(c => c.key === cat)
       groups.push({ key: cat, icon: catInfo.icon, label: catInfo.label, items })
     }
   }
   return groups
+})
+
+const myQuoteItems = computed(() => {
+  return shop.purchasedItems
+    .map(id => shop.getItem(id))
+    .filter(i => i && i.category === 'quote')
 })
 
 const myConsumables = computed(() => {
@@ -251,11 +285,15 @@ function handleBuy() {
   if (!purchaseItem.value) return
   const result = shop.buyItem(purchaseItem.value.id)
   if (result.ok) {
-    // 消耗类不关闭弹窗，显示使用按钮
     if (purchaseItem.value.type !== 'consumable') {
       showPurchase.value = false
       purchaseItem.value = null
     }
+    result.toasts?.forEach((msg) => emit('show-toast', msg))
+  } else if (result.reason === 'insufficient') {
+    emit('show-toast', '❌ 金币不足')
+  } else if (result.reason === 'owned') {
+    emit('show-toast', '❌ 已拥有该物品')
   }
 }
 
@@ -291,57 +329,123 @@ function handleUse(item) {
   if (!shop.useConsumable(propKey)) return
 
   if (propKey === 'random_box') {
-    const amount = Math.floor(Math.random() * 101)
-    gameStore.coins += amount
-    purchaseItem.value = { ...item, resultDesc: amount >= 50 ? `🎁 恭喜获得 ${amount} 金币！` : `🎁 运气一般，获得 ${amount} 金币...`, isResult: true }
+    showGambleAnim(item, '🎁', () => {
+      const amount = Math.floor(Math.random() * 101)
+      gameStore.coins += amount; gameStore.logCoin(amount, '🎁 随机礼盒')
+      purchaseItem.value = { ...item, resultDesc: amount >= 50 ? `🎁 恭喜获得 ${amount} 金币！` : `🎁 运气一般，获得 ${amount} 金币...`, isResult: true }
+    })
   } else if (propKey === 'mystery_box') {
-    const amount = Math.floor(Math.random() * 401)
-    gameStore.coins += amount
-    purchaseItem.value = { ...item, resultDesc: amount >= 200 ? `🎉 神秘礼盒开出 ${amount} 金币！` : `📦 开出了 ${amount} 金币，再试试手气？`, isResult: true }
+    showGambleAnim(item, '📦', () => {
+      const amount = Math.floor(Math.random() * 401)
+      gameStore.coins += amount; gameStore.logCoin(amount, '📦 神秘礼盒')
+      purchaseItem.value = { ...item, resultDesc: amount >= 200 ? `🎉 神秘礼盒开出 ${amount} 金币！` : `📦 开出了 ${amount} 金币，再试试手气？`, isResult: true }
+    })
   } else if (propKey === 'crystal') {
     const fortunes = ['大吉 🎉 今天运气爆棚！', '中吉 😊 一切顺利~', '小吉 🙂 平平淡淡才是真', '末吉 😅 小心行事', '凶 😱 建议今天别出门']
     purchaseItem.value = { ...item, resultDesc: fortunes[Math.floor(Math.random() * fortunes.length)], isResult: true }
   } else if (propKey === 'wheel') {
-    const amount = Math.floor(Math.random() * 201)
-    gameStore.coins += amount
-    purchaseItem.value = { ...item, resultDesc: amount >= 100 ? `🎰 恭喜获得 ${amount} 金币！` : `🎰 获得 ${amount} 金币，下次一定更好！`, isResult: true }
+    showGambleAnim(item, '🎰', () => {
+      const amount = Math.floor(Math.random() * 201)
+      gameStore.coins += amount; gameStore.logCoin(amount, '🎰 每日转盘')
+      purchaseItem.value = { ...item, resultDesc: amount >= 100 ? `🎰 恭喜获得 ${amount} 金币！` : `🎰 获得 ${amount} 金币，下次一定更好！`, isResult: true }
+    })
   } else if (propKey === 'refresh') {
-    const newQuote = gameStore.getDialogue()
+    const newQuote = gameStore.getDialogue(shop)
     purchaseItem.value = { ...item, resultDesc: `🔄 今日语录已刷新！\n「${newQuote}」`, isResult: true }
   } else if (propKey === 'golden_touch') {
-    const amount = Math.floor(Math.random() * 1001)
-    gameStore.coins += amount
-    purchaseItem.value = { ...item, resultDesc: amount >= 500 ? `👆 点金术大成功！获得 ${amount} 金币！` : `👆 点金术生效，获得 ${amount} 金币`, isResult: true }
+    showGambleAnim(item, '👆', () => {
+      const amount = Math.floor(Math.random() * 1001)
+      gameStore.coins += amount; gameStore.logCoin(amount, '👆 点金术')
+      purchaseItem.value = { ...item, resultDesc: amount >= 500 ? `👆 点金术大成功！获得 ${amount} 金币！` : `👆 点金术生效，获得 ${amount} 金币`, isResult: true }
+    })
   }
+  // 非赌博道具立即检查成就；赌博道具在动画回调中检查
+  if (!['random_box', 'mystery_box', 'wheel', 'golden_touch'].includes(propKey)) {
+    gameStore.checkAchievements()
+  }
+}
+
+function showGambleAnim(item, icon, callback) {
+  gambleIcon.value = icon
+  gambleResult.value = null
+  gambleSpinning.value = true
+  showGamble.value = true
+  showPurchase.value = false
+  setTimeout(() => {
+    gambleSpinning.value = false
+    callback()
+    setTimeout(() => {
+      showGamble.value = false
+      showPurchase.value = true
+      gameStore.checkAchievements()
+    }, 1200)
+  }, 1500)
 }
 
 function handlePullGacha(times) {
   const result = shop.pullGacha(times)
   if (result.ok) {
-    gachaResults.value = result.results
-    showGachaResult.value = true
+    showSlotMachine(result.results, false)
+    result.toasts?.forEach((msg) => emit('show-toast', msg))
+  } else {
+    emit('show-toast', '❌ 金币不足')
   }
 }
 
 function handlePullPremiumGacha(times) {
   const result = shop.pullPremiumGacha(times)
   if (result.ok) {
-    premiumGachaResults.value = result.results
+    showSlotMachine(result.results, true)
+    result.toasts?.forEach((msg) => emit('show-toast', msg))
+  } else {
+    emit('show-toast', '❌ 金币不足')
+  }
+}
+
+function showSlotMachine(results, isPremium) {
+  slotResults.value = results
+  slotIsPremium.value = isPremium
+  slotSpinning.value = true
+  showSlot.value = true
+  const allIcons = ['🎰', '💎', '🌟', '💫', '✨', '🎯', '🔮', '🎪']
+  let count = 0
+  const interval = setInterval(() => {
+    slotIcons.value = results.map(() => allIcons[Math.floor(Math.random() * allIcons.length)])
+    count++
+    if (count > 15) {
+      clearInterval(interval)
+      slotIcons.value = results.map(r => r.icon || '💰')
+      slotSpinning.value = false
+    }
+  }, 100)
+}
+
+function closeSlot() {
+  showSlot.value = false
+  if (slotIsPremium.value) {
+    premiumGachaResults.value = slotResults.value
     showPremiumGachaResult.value = true
+  } else {
+    gachaResults.value = slotResults.value
+    showGachaResult.value = true
   }
 }
 
 function handleBuyLimited(limitedItem) {
   const result = shop.buyLimitedItem(limitedItem)
   if (result.ok) {
-    emit('show-toast', `🎉 限时折扣购买成功！`)
+    result.toasts?.forEach((msg) => emit('show-toast', msg))
+  } else if (result.reason === 'insufficient') {
+    emit('show-toast', '❌ 金币不足')
   }
 }
 
 function handleBuyTitle(title) {
   const result = shop.buyTitle(title.id)
   if (result.ok) {
-    emit('show-toast', `🏅 获得称号「${title.name}」！`)
+    result.toasts?.forEach((msg) => emit('show-toast', msg))
+  } else if (result.reason === 'insufficient') {
+    emit('show-toast', '❌ 金币不足')
   }
 }
 
@@ -383,7 +487,10 @@ function getRarityLabel(rarity) {
     <!-- 顶部余额栏 -->
     <div class="shop-header">
       <div class="shop-title">🛒 金币商店</div>
-      <div class="shop-balance">💰 {{ gameStore.coins }}</div>
+      <div class="shop-header-right">
+        <button class="my-items-btn" :class="{ active: activeCat === 'mine' }" @click="activeCat = 'mine'">👤 我的</button>
+        <div class="shop-balance">💰 {{ gameStore.coins }}</div>
+      </div>
     </div>
 
     <!-- 分类标签栏 -->
@@ -418,14 +525,14 @@ function getRarityLabel(rarity) {
 
           <div class="gacha-btns">
             <button class="gacha-btn single" @click="handlePullGacha(1)">
-              💰 150 单抽
+              💰 50 单抽
             </button>
             <button class="gacha-btn multi" @click="handlePullGacha(5)">
-              💰 650 五连
+              💰 225 五连
             </button>
           </div>
 
-          <div class="gacha-pity">距离保底还有 <b>{{ 50 - shop.gachaCount }}</b> 抽</div>
+          <div class="gacha-pity">🎯 距离保底还有 <b>{{ 30 - shop.gachaCount }}</b> 抽（保底至少史诗）</div>
 
           <button class="gacha-preview-btn" @click="showGachaPreview = true">
             🎁 查看奖品池
@@ -441,6 +548,7 @@ function getRarityLabel(rarity) {
         </div>
         <div class="limited-grid">
           <div v-for="li in shop.limitedShopItems" :key="li.id" class="limited-card" :class="{ owned: shop.isOwned(li.id) }" @click="!shop.isOwned(li.id) && handleBuyLimited(li)">
+            
             <div class="limited-discount">-{{ li.discount }}%</div>
             <div class="limited-icon">{{ shop.getItem(li.id)?.icon }}</div>
             <div class="limited-name">{{ shop.getItem(li.id)?.name }}</div>
@@ -469,12 +577,14 @@ function getRarityLabel(rarity) {
 
           <div class="gacha-btns">
             <button class="gacha-btn single" @click="handlePullPremiumGacha(1)">
-              💰 1500 单抽
+              💰 200 单抽
             </button>
             <button class="gacha-btn multi" @click="handlePullPremiumGacha(5)">
-              💰 6500 五连
+              💰 900 五连
             </button>
           </div>
+
+          <div class="gacha-pity">🎯 距离保底还有 <b>{{ 20 - shop.premiumGachaCount }}</b> 抽（保底至少传说）</div>
 
           <button class="gacha-preview-btn" @click="showGachaPreview = true">
             🎁 查看奖品池
@@ -520,6 +630,7 @@ function getRarityLabel(rarity) {
                 :class="shop.isEquipped(item.category, item.id) ? 'equipped' : 'owned'"
                 @click="onItemClick(item)"
               >
+                
                 <div class="card-icon">{{ item.icon }}</div>
                 <div class="card-name">{{ item.name }}</div>
                 <div class="card-action" :class="shop.isEquipped(item.category, item.id) ? 'equipped' : 'owned'">
@@ -538,6 +649,7 @@ function getRarityLabel(rarity) {
                 class="item-card owned"
                 @click="onItemClick(item)"
               >
+                
                 <div class="card-icon">{{ item.icon }}</div>
                 <div class="card-name">{{ item.name }}</div>
                 <div class="card-action owned">×{{ item.count }}</div>
@@ -545,13 +657,24 @@ function getRarityLabel(rarity) {
             </div>
           </div>
 
-          <!-- 语录类别选择 -->
-          <div class="mine-group" v-if="quoteCategories.some(c => c.owned)">
+          <!-- 语录：物品 + 显示设置 -->
+          <div class="mine-group" v-if="myQuoteItems.length > 0">
             <div class="mine-group-title">
-              📖 语录显示设置
-              <span class="mine-group-count">{{ shop.selectedQuoteCategories.length === 0 && !shop.quoteCategoriesExplicitlySet ? '全部' : shop.selectedQuoteCategories.length + '类' }}</span>
+              📖 语录
+              <span class="mine-group-count">{{ myQuoteItems.length }}包</span>
             </div>
-            <div class="quote-cat-hint">选择要在首页随机显示的语录类别（不选则全部显示）</div>
+            <div class="item-grid">
+              <div
+                v-for="item in myQuoteItems"
+                :key="item.id"
+                class="item-card owned"
+              >
+                <div class="card-icon">{{ item.icon }}</div>
+                <div class="card-name">{{ item.name }}</div>
+                <div class="card-action owned">{{ item.rarity ? '抽奖' : '商城' }}</div>
+              </div>
+            </div>
+            <div class="quote-cat-hint" style="margin-top:16px">选择要在首页随机显示的语录类别（不选则全部显示）</div>
             <div class="quote-cat-grid">
               <button
                 v-for="cat in quoteCategories.filter(c => c.owned)"
@@ -594,6 +717,7 @@ function getRarityLabel(rarity) {
                 :class="getCardClass(item)"
                 @click="onItemClick(item)"
               >
+                
                 <div class="card-icon">{{ item.icon }}</div>
                 <div class="card-name">{{ item.name }}</div>
                 <div class="card-desc" v-if="getItemDesc(item)">{{ getItemDesc(item) }}</div>
@@ -616,6 +740,7 @@ function getRarityLabel(rarity) {
               :class="getCardClass(item)"
               @click="onItemClick(item)"
             >
+              
               <div class="card-icon">{{ item.icon }}</div>
               <div class="card-name">{{ item.name }}</div>
               <div class="card-desc" v-if="getItemDesc(item)">{{ getItemDesc(item) }}</div>
@@ -641,7 +766,10 @@ function getRarityLabel(rarity) {
 
             <!-- 正常商品详情 -->
             <template v-else>
-              <div class="purchase-icon">{{ purchaseItem?.icon }}</div>
+              <div class="purchase-icon-wrap">
+                
+                <div class="purchase-icon">{{ purchaseItem?.icon }}</div>
+              </div>
               <div class="purchase-name">{{ purchaseItem?.name }}</div>
               <div class="purchase-cat">{{ categories.find(c => c.key === purchaseItem?.category)?.icon }} {{ categories.find(c => c.key === purchaseItem?.category)?.label }}</div>
 
@@ -659,7 +787,7 @@ function getRarityLabel(rarity) {
               </div>
 
               <!-- 已拥有状态 -->
-              <template v-if="purchaseItem?.type !== 'consumable' && shop.isOwned(purchaseItem?.id)">
+              <template v-if="purchaseItem?.type === 'equipable' && shop.isOwned(purchaseItem?.id)">
                 <div class="purchase-owned-badge">
                   ✓ 已拥有
                 </div>
@@ -682,14 +810,14 @@ function getRarityLabel(rarity) {
                   <div class="purchase-hint">签到时自动生效</div>
                   <div class="purchase-btns">
                     <button class="btn-cancel" @click="showPurchase = false">关闭</button>
-                    <button class="btn-buy-again" @click="handleBuy">再买一个 💰{{ purchaseItem?.price }}</button>
+                    <button class="btn-buy-again" :disabled="gameStore.coins < (purchaseItem?.price || 0)" @click="handleBuy">再买一个 💰{{ purchaseItem?.price }}</button>
                   </div>
                 </template>
                 <!-- 主动道具：可使用 -->
                 <template v-else>
                   <div class="purchase-btns">
                     <button class="btn-confirm" @click="handleUse(purchaseItem)">使用</button>
-                    <button class="btn-buy-again" @click="handleBuy">再买一个 💰{{ purchaseItem?.price }}</button>
+                    <button class="btn-buy-again" :disabled="gameStore.coins < (purchaseItem?.price || 0)" @click="handleBuy">再买一个 💰{{ purchaseItem?.price }}</button>
                   </div>
                 </template>
               </template>
@@ -737,6 +865,7 @@ function getRarityLabel(rarity) {
                 class="gacha-result-item"
                 :style="{ borderColor: getRarityColor(result.rarity) }"
               >
+                <ShopItemAnim v-if="shouldShowAnim(result.category)" v-bind="getItemAnimation(result.id)" />
                 <div class="result-icon">{{ result.icon }}</div>
                 <div class="result-name">{{ result.name }}</div>
                 <div class="result-rarity" :style="{ color: getRarityColor(result.rarity) }">
@@ -763,6 +892,7 @@ function getRarityLabel(rarity) {
                 class="gacha-result-item"
                 :style="{ borderColor: getRarityColor(result.rarity) }"
               >
+                <ShopItemAnim v-if="shouldShowAnim(result.category)" v-bind="getItemAnimation(result.id)" />
                 <div class="result-icon">{{ result.icon }}</div>
                 <div class="result-name">{{ result.name }}</div>
                 <div class="result-rarity" :style="{ color: getRarityColor(result.rarity) }">
@@ -786,7 +916,8 @@ function getRarityLabel(rarity) {
             <div class="preview-section">
               <div class="preview-rarity-title" style="color:#ffd700">✦ 传说品质 · 0.5%</div>
               <div class="preview-grid">
-                <div v-for="item in gachaByRarity.legendary" :key="item.id" class="preview-item" :class="{ owned: shop.isOwned(item.id) }">
+                <div v-for="item in activeGachaByRarity.legendary" :key="item.id" class="preview-item" :class="{ owned: shop.isOwned(item.id) }">
+                  
                   <div class="preview-item-icon">{{ item.icon }}</div>
                   <div class="preview-item-name">{{ item.name }}</div>
                 </div>
@@ -796,7 +927,8 @@ function getRarityLabel(rarity) {
             <div class="preview-section">
               <div class="preview-rarity-title" style="color:#a855f7">◆ 史诗品质 · 3%</div>
               <div class="preview-grid">
-                <div v-for="item in gachaByRarity.epic" :key="item.id" class="preview-item" :class="{ owned: shop.isOwned(item.id) }">
+                <div v-for="item in activeGachaByRarity.epic" :key="item.id" class="preview-item" :class="{ owned: shop.isOwned(item.id) }">
+                  
                   <div class="preview-item-icon">{{ item.icon }}</div>
                   <div class="preview-item-name">{{ item.name }}</div>
                 </div>
@@ -806,7 +938,8 @@ function getRarityLabel(rarity) {
             <div class="preview-section">
               <div class="preview-rarity-title" style="color:#3b82f6">● 稀有品质 · 12%</div>
               <div class="preview-grid">
-                <div v-for="item in gachaByRarity.rare" :key="item.id" class="preview-item" :class="{ owned: shop.isOwned(item.id) }">
+                <div v-for="item in activeGachaByRarity.rare" :key="item.id" class="preview-item" :class="{ owned: shop.isOwned(item.id) }">
+                  
                   <div class="preview-item-icon">{{ item.icon }}</div>
                   <div class="preview-item-name">{{ item.name }}</div>
                 </div>
@@ -819,6 +952,52 @@ function getRarityLabel(rarity) {
             </div>
 
             <button class="modal-ok" @click="showGachaPreview = false">关闭</button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 赌博动画 -->
+    <Teleport to="body">
+      <Transition name="pop">
+        <div v-if="showGamble" class="gamble-mask">
+          <div class="gamble-box">
+            <div class="gamble-icon" :class="{ spinning: gambleSpinning, bounce: !gambleSpinning }">
+              {{ gambleIcon }}
+            </div>
+            <div v-if="gambleSpinning" class="gamble-text">正在揭晓...</div>
+            <div v-else-if="purchaseItem?.isResult" class="gamble-result">
+              <div class="gamble-result-text">{{ purchaseItem.resultDesc }}</div>
+            </div>
+          </div>
+          <div v-if="!gambleSpinning" class="gamble-particles">
+            <div v-for="n in 20" :key="n" class="gamble-particle"
+              :style="{ left: (50 + Math.cos(n * 0.314) * 30) + '%', top: (50 + Math.sin(n * 0.314) * 30) + '%', animationDelay: (n * 0.05) + 's', background: ['#ff6b8a','#ffd700','#4ecdc4','#a066d9','#ff9f43'][n % 5] }"></div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 老虎机动画 -->
+    <Teleport to="body">
+      <Transition name="pop">
+        <div v-if="showSlot" class="slot-mask" @click="!slotSpinning && closeSlot()">
+          <div class="slot-box" :class="{ premium: slotIsPremium }" @click.stop>
+            <div class="slot-title">{{ slotIsPremium ? '💎 高级抽奖' : '🎰 普通抽奖' }}</div>
+            <div class="slot-machine">
+              <div v-for="(icon, i) in slotIcons" :key="i" class="slot-reel" :class="{ spinning: slotSpinning }">
+                <span class="slot-icon">{{ icon }}</span>
+              </div>
+            </div>
+            <div v-if="!slotSpinning" class="slot-results">
+              <div v-for="(r, i) in slotResults" :key="i" class="slot-result-item" :class="r.rarity">
+                <span class="slot-result-icon">{{ r.icon }}</span>
+                <span class="slot-result-name">{{ r.name }}</span>
+              </div>
+            </div>
+            <button v-if="!slotSpinning" class="slot-close-btn" @click="closeSlot()">
+              {{ slotResults.some(r => r.rarity === 'legendary') ? '🎊 太棒了！' : slotResults.some(r => r.rarity === 'epic') ? '🎉 不错！' : '确定' }}
+            </button>
           </div>
         </div>
       </Transition>
@@ -845,6 +1024,24 @@ function getRarityLabel(rarity) {
   color: #4a4a56;
 }
 
+.shop-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.my-items-btn {
+  padding: 8px 18px;
+  border: 2px solid rgba(232,93,117,0.2);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff0f3, #fff5f0);
+  font-size: 14px;
+  font-weight: 700;
+  color: #e85d75;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.my-items-btn:hover { background: linear-gradient(135deg, #ffe0e6, #fff0f0); border-color: rgba(232,93,117,0.4); }
+.my-items-btn.active { background: linear-gradient(135deg, #e85d75, #d4a853); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(232,93,117,0.25); }
 .shop-balance {
   background: linear-gradient(135deg, #fff0f3, #fff5f0);
   border: 1px solid rgba(255,107,138,0.12);
@@ -922,13 +1119,16 @@ function getRarityLabel(rarity) {
 }
 
 .item-card {
-  background: #fff;
-  border: 2px solid #e5e5e5;
-  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, #fffdfb 100%);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  border: 1.5px solid #e7e7ee;
+  border-radius: 18px;
   padding: 14px 8px;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.25s, box-shadow 0.25s;
+  transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -936,21 +1136,23 @@ function getRarityLabel(rarity) {
   min-height: 100px;
 }
 
-.item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.item-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(102,126,234,0.10); border-color: #d8def8; }
 
 .item-card.buyable { border-color: #e5e5e5; }
-.item-card.owned { border-color: #8fae9a; background: #e8ece8; }
-.item-card.equipped { border-color: #f59e0b; background: #fffbeb; }
+.item-card.owned { border-color: #9dc0aa; background: linear-gradient(180deg, #f6fbf7 0%, #f1f9f4 100%); }
+.item-card.equipped { border-color: #eab308; background: linear-gradient(180deg, #fff9e8 0%, #fff4d8 100%); }
 
-.card-icon { font-size: 28px; margin-bottom: 6px; }
-.card-name { font-size: 13px; font-weight: 700; color: #5a5a66; margin-bottom: 4px; }
-.card-desc { font-size: 11px; color: #e67e22; margin-bottom: 6px; line-height: 1.3; min-height: 14px; }
+.card-icon { font-size: 28px; margin-bottom: 6px; position: relative; z-index: 1; }
+.card-name { font-size: 13px; font-weight: 700; color: #5a5a66; margin-bottom: 4px; position: relative; z-index: 1; }
+.card-desc { font-size: 11px; color: #d97706; margin-bottom: 6px; line-height: 1.3; min-height: 14px; position: relative; z-index: 1; }
 
 .card-action {
   font-size: 13px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 8px;
+  position: relative;
+  z-index: 1;
   display: inline-block;
 }
 
@@ -960,12 +1162,12 @@ function getRarityLabel(rarity) {
 }
 
 .card-action.owned {
-  background: #8fae9a;
+  background: #9dc0aa;
   color: #fff;
 }
 
 .card-action.equipped {
-  background: #f59e0b;
+  background: #eab308;
   color: #fff;
 }
 
@@ -977,7 +1179,8 @@ function getRarityLabel(rarity) {
 }
 
 .gacha-bg {
-  background: linear-gradient(180deg, #1a1a2e 0%, #2d1b69 100%);
+  background: linear-gradient(180deg, #1f2138 0%, #33255f 100%);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.12);
   border-radius: 24px;
   padding: 40px 48px;
   text-align: center;
@@ -1021,7 +1224,7 @@ function getRarityLabel(rarity) {
 }
 
 .gacha-btn.multi {
-  background: linear-gradient(135deg, #f59e0b, #f97316);
+  background: linear-gradient(135deg, #eab308, #f59e0b);
   box-shadow: 0 4px 16px rgba(245,158,11,0.4);
 }
 
@@ -1059,7 +1262,7 @@ function getRarityLabel(rarity) {
 .limited-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .limited-card {
   background: #fff;
-  border: 2px solid #fee2e2;
+  border: 1.5px solid #fde2e2;
   border-radius: 16px;
   padding: 16px 12px;
   text-align: center;
@@ -1074,6 +1277,7 @@ function getRarityLabel(rarity) {
   position: absolute;
   top: 8px;
   right: 8px;
+  z-index: 2;
   background: linear-gradient(135deg, #ef4444, #f97316);
   color: #fff;
   font-size: 13px;
@@ -1081,16 +1285,16 @@ function getRarityLabel(rarity) {
   padding: 3px 8px;
   border-radius: 8px;
 }
-.limited-icon { font-size: 32px; margin-bottom: 8px; }
-.limited-name { font-size: 14px; font-weight: 700; color: #5a5a66; margin-bottom: 8px; }
-.limited-prices { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.limited-icon { font-size: 32px; margin-bottom: 8px; position: relative; z-index: 1; }
+.limited-name { font-size: 14px; font-weight: 700; color: #5a5a66; margin-bottom: 8px; position: relative; z-index: 1; }
+.limited-prices { display: flex; align-items: center; justify-content: center; gap: 8px; position: relative; z-index: 1; }
 .limited-original { font-size: 13px; color: #999; text-decoration: line-through; }
 .limited-now { font-size: 15px; font-weight: 800; color: #ef4444; }
-.limited-owned { font-size: 13px; color: #8fae9a; font-weight: 700; margin-top: 6px; }
+.limited-owned { font-size: 13px; color: #8fae9a; font-weight: 700; margin-top: 6px; position: relative; z-index: 1; }
 
 /* ===== 高级抽奖 ===== */
 .gacha-bg.premium {
-  background: linear-gradient(180deg, #1a0a2e 0%, #2d1b69 50%, #4a1942 100%);
+  background: linear-gradient(180deg, #211437 0%, #33255f 50%, #482447 100%);
 }
 
 /* ===== 称号系统 ===== */
@@ -1100,8 +1304,8 @@ function getRarityLabel(rarity) {
 .title-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .title-card {
   background: #fff;
-  border: 2px solid #e5e5e5;
-  border-radius: 14px;
+  border: 1.5px solid #e7e7ee;
+  border-radius: 16px;
   padding: 14px 10px;
   text-align: center;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -1205,7 +1409,17 @@ function getRarityLabel(rarity) {
   max-width: 400px;
 }
 
-.purchase-icon { font-size: 48px; margin-bottom: 8px; }
+.purchase-icon-wrap {
+  position: relative;
+  width: 80px; height: 80px;
+  margin: 0 auto 8px;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.purchase-icon { font-size: 48px; margin-bottom: 8px; position: relative; z-index: 1; }
 .purchase-name { font-size: 18px; font-weight: 800; color: #4a4a56; margin-bottom: 4px; }
 .purchase-cat { font-size: 13px; color: #888; margin-bottom: 12px; }
 
@@ -1265,8 +1479,8 @@ function getRarityLabel(rarity) {
 .purchase-owned-badge {
   display: inline-block;
   padding: 6px 20px;
-  background: linear-gradient(135deg, #e8ece8, #dcfce7);
-  border: 1px solid #86efac;
+  background: linear-gradient(135deg, #eef8f1, #e5f6eb);
+  border: 1px solid #a8d9b4;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 700;
@@ -1392,15 +1606,19 @@ function getRarityLabel(rarity) {
 }
 
 .gacha-result-item {
+  position: relative;
+  overflow: hidden;
   padding: 12px 6px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
+  border: 1.5px solid #e7e7ee;
+  border-radius: 14px;
   text-align: center;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
 }
 
-.result-icon { font-size: 24px; margin-bottom: 4px; }
-.result-name { font-size: 13px; font-weight: 600; color: #5a5a66; }
-.result-rarity { font-size: 12px; font-weight: 700; margin-top: 2px; }
+.result-icon { font-size: 24px; margin-bottom: 4px; position: relative; z-index: 1; }
+.result-name { font-size: 13px; font-weight: 600; color: #5a5a66; position: relative; z-index: 1; }
+.result-rarity { font-size: 12px; font-weight: 700; margin-top: 2px; position: relative; z-index: 1; }
 
 /* ===== 抽奖奖品池预览 ===== */
 .gacha-preview-modal {
@@ -1429,19 +1647,192 @@ function getRarityLabel(rarity) {
 }
 
 .preview-item {
+  position: relative;
+  overflow: hidden;
   padding: 10px 6px;
-  border: 1px solid #e5e5e5;
-  border-radius: 10px;
+  border: 1.5px solid #e7e7ee;
+  border-radius: 14px;
   text-align: center;
-  transition: border-color 0.2s;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
 }
 
 .preview-item.owned {
-  border-color: #8fae9a;
-  background: #e8ece8;
+  border-color: #9dc0aa;
+  background: #f3faf5;
 }
 
-.preview-item-icon { font-size: 22px; margin-bottom: 4px; }
-.preview-item-name { font-size: 12px; font-weight: 600; color: #555; }
+.preview-item-icon { font-size: 22px; margin-bottom: 4px; position: relative; z-index: 1; }
+.preview-item-name { font-size: 12px; font-weight: 600; color: #555; position: relative; z-index: 1; }
 .preview-item.owned .preview-item-name { color: #8fae9a; }
+
+/* ===== 赌博动画 ===== */
+.gamble-mask {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+}
+.gamble-box {
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+}
+.gamble-icon {
+  font-size: 80px;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.3));
+}
+.gamble-icon.spinning {
+  animation: gamble-spin 0.3s linear infinite;
+}
+.gamble-icon.bounce {
+  animation: gamble-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.gamble-text {
+  font-size: 18px; font-weight: 700; color: #fff;
+  animation: gamble-pulse 0.8s ease-in-out infinite alternate;
+}
+.gamble-result {
+  animation: gamble-reveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.gamble-result-text {
+  font-size: 20px; font-weight: 800; color: #ffd700;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.3);
+  padding: 16px 32px; border-radius: 16px;
+  border: 2px solid rgba(255,215,0,0.3);
+}
+.gamble-particles {
+  position: fixed; inset: 0; pointer-events: none;
+}
+.gamble-particle {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  animation: gamble-explode 1s ease-out forwards;
+}
+@keyframes gamble-spin {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(90deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(1); }
+  75% { transform: rotate(270deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes gamble-bounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes gamble-pulse {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+@keyframes gamble-reveal {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes gamble-explode {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx, 50px), var(--ty, -80px)) scale(0); opacity: 0; }
+}
+.gamble-particle:nth-child(odd) { --tx: -60px; --ty: -90px; }
+.gamble-particle:nth-child(even) { --tx: 70px; --ty: -70px; }
+.gamble-particle:nth-child(3n) { --tx: -40px; --ty: 80px; }
+.gamble-particle:nth-child(4n) { --tx: 50px; --ty: 60px; }
+.gamble-particle:nth-child(5n) { --tx: -80px; --ty: -30px; }
+
+/* ===== 老虎机动画 ===== */
+.slot-mask {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(16px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.slot-box {
+  background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+  border-radius: 24px;
+  padding: 32px 40px;
+  text-align: center;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,215,0,0.2);
+  min-width: 320px;
+}
+.slot-box.premium {
+  background: linear-gradient(135deg, #1a0a2e, #2a1040);
+  border-color: rgba(168,85,247,0.3);
+}
+.slot-title {
+  font-size: 20px; font-weight: 800; color: #ffd700;
+  margin-bottom: 24px;
+  text-shadow: 0 2px 8px rgba(255,215,0,0.3);
+}
+.slot-machine {
+  display: flex; gap: 12px; justify-content: center;
+  margin-bottom: 24px;
+}
+.slot-reel {
+  width: 72px; height: 80px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.slot-reel.spinning {
+  animation: slot-shake 0.1s linear infinite;
+}
+.slot-icon {
+  font-size: 40px;
+  transition: transform 0.3s;
+}
+.slot-reel.spinning .slot-icon {
+  animation: slot-scroll 0.1s linear infinite;
+}
+.slot-results {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.slot-result-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  animation: slot-result-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.slot-result-item.legendary {
+  background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.1));
+  border-color: rgba(255,215,0,0.3);
+}
+.slot-result-item.epic {
+  background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(139,92,246,0.1));
+  border-color: rgba(168,85,247,0.3);
+}
+.slot-result-item.rare {
+  background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(96,165,250,0.1));
+  border-color: rgba(59,130,246,0.3);
+}
+.slot-result-icon { font-size: 20px; }
+.slot-result-name { font-size: 13px; font-weight: 600; color: #e0e0f0; }
+.slot-close-btn {
+  padding: 12px 32px;
+  border: none; border-radius: 14px;
+  background: linear-gradient(135deg, #e85d75, #d4a853);
+  color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(232,93,117,0.3);
+  transition: transform 0.2s;
+}
+.slot-close-btn:hover { transform: translateY(-2px); }
+@keyframes slot-shake {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes slot-scroll {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+@keyframes slot-result-pop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 </style>

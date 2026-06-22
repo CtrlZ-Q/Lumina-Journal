@@ -15,18 +15,19 @@ const selectedQuote = ref('')
 function submitQuote() {
   const text = newQuote.value.trim()
   if (!text) return
-  store.addFavoriteQuote(text)
+  const toasts = store.addFavoriteQuote(text) || []
   newQuote.value = ''
   emit('show-toast', '⭐ 语录已收藏')
+  toasts.forEach(t => emit('show-toast', t))
 }
 
-const currentQuote = ref(store.getDialogue())
+const currentQuote = ref(store.getDialogue(shop))
 const quoteChanging = ref(false)
 
 function changeQuote() {
   quoteChanging.value = true
   setTimeout(() => {
-    currentQuote.value = store.getDialogue()
+    currentQuote.value = store.getDialogue(shop)
     quoteChanging.value = false
   }, 200)
 }
@@ -91,7 +92,7 @@ const quoteCategories = computed(() => {
           <span class="action-icon">🔄</span>
           <span>换一条</span>
         </button>
-        <button class="quote-action-btn fav" @click="store.addFavoriteQuote(currentQuote); emit('show-toast', '⭐ 语录已收藏')">
+        <button class="quote-action-btn fav" @click="(() => { const t = store.addFavoriteQuote(currentQuote); emit('show-toast', '⭐ 语录已收藏'); t?.forEach(msg => emit('show-toast', msg)) })()">
           <span class="action-icon">⭐</span>
           <span>收藏</span>
         </button>

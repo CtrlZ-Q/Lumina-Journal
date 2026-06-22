@@ -128,6 +128,7 @@ const maxStreak = computed(() => {
 .monthly-history {
   padding: 16px 20px;
   font-family: 'STKaiti', 'KaiTi', '楷体', serif;
+  opacity: 0.88;
 }
 
 /* 文艺标题 */
@@ -146,7 +147,7 @@ const maxStreak = computed(() => {
 
 .art-title {
   font-size: 18px;
-  color: #8a7a70;
+  color: #a09690;
   letter-spacing: 6px;
   font-weight: 600;
 }
@@ -209,9 +210,9 @@ const maxStreak = computed(() => {
 
 .month-item {
   padding: 10px 12px;
-  background: rgba(255, 250, 248, 0.5);
+  background: rgba(255, 250, 248, 0.22);
   border-radius: 10px;
-  border: 1px solid rgba(200, 176, 160, 0.2);
+  border: 1px solid rgba(200, 176, 160, 0.08);
 }
 
 .month-top {
@@ -223,26 +224,27 @@ const maxStreak = computed(() => {
 
 .month-label {
   font-size: 15px;
-  color: #6a5a50;
+  color: #a89e98;
   font-weight: 600;
 }
 
 .month-count {
   font-size: 13px;
-  color: #a09088;
-  background: rgba(200, 176, 160, 0.15);
+  color: #c0b8b0;
+  background: rgba(200, 176, 160, 0.08);
   padding: 3px 10px;
   border-radius: 8px;
 }
 
 /* 迷你日历 */
 .mini-cal {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .mini-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 3px;
 }
 
@@ -252,17 +254,18 @@ const maxStreak = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: #a09088;
+  font-size: 13px;
+  font-weight: 500;
+  color: #a59a92;
   border-radius: 6px;
-  background: rgba(200, 176, 160, 0.08);
+  background: rgba(200, 176, 160, 0.16);
 }
 
 .mini-day.on {
-  background: linear-gradient(135deg, #d4a0b4, #c8a0a0);
+  background: linear-gradient(135deg, #c28aaa, #b78a8a);
   color: #fff;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(212, 160, 180, 0.4);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(168, 90, 136, 0.18);
 }
 
 .mini-day.now {
@@ -281,12 +284,12 @@ const maxStreak = computed(() => {
   gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid rgba(200, 176, 160, 0.2);
+  border-top: 1px solid rgba(200, 176, 160, 0.12);
 }
 
 .stat {
   font-size: 14px;
-  color: #a09088;
+  color: #c2bab2;
 }
 
 .dot {
@@ -298,7 +301,7 @@ const maxStreak = computed(() => {
 :deep(.dark-mode) .art-title,
 :deep(.dark-mode) .year-text,
 :deep(.dark-mode) .month-label {
-  color: #d0c0c8 !important;
+  color: #e8dce4 !important;
 }
 
 :deep(.dark-mode) .month-item {
@@ -307,8 +310,8 @@ const maxStreak = computed(() => {
 }
 
 :deep(.dark-mode) .mini-day {
-  background: rgba(180, 140, 160, 0.1) !important;
-  color: #b0a0a8 !important;
+  background: rgba(180, 140, 160, 0.36) !important;
+  color: #d0c0c8 !important;
 }
 
 :deep(.dark-mode) .mini-day.on {

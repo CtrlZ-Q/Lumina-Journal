@@ -3,6 +3,7 @@ import { ref, computed, nextTick } from 'vue'
 import { useGameStore } from '../stores/game'
 import { useShopStore } from '../stores/shop'
 import { loadState, saveState, STORAGE_KEY, SHOP_KEY } from '../composables/useStorage'
+import { resetEasterClaims } from '../composables/easterEgg'
 import { titleDefs } from '../stores/shop'
 import WeeklyReport from '../components/WeeklyReport.vue'
 
@@ -26,6 +27,7 @@ function cancelReset() { showReset.value = false; resetStep.value = 0 }
 function confirmReset() {
   store.resetState()
   shop.resetShop()
+  resetEasterClaims()
   showReset.value = false
   resetStep.value = 0
   emit('show-toast', '🔄 所有数据已重置')
@@ -85,8 +87,7 @@ function toggleManualSection(key) {
 
 function handleBuyTitle(t) {
   const result = shop.buyTitle(t.id)
-  if (result.ok) emit('show-toast', `🏅 获得称号「${t.name}」！`)
-  else if (result.reason === 'insufficient') emit('show-toast', '❌ 金币不足')
+  if (result.toasts?.length) result.toasts.forEach((msg) => emit('show-toast', msg))
 }
 </script>
 
@@ -257,7 +258,7 @@ function handleBuyTitle(t) {
               </button>
               <Transition name="expand"><div v-if="manualSections.checkin" class="manual-content">
                 <div class="manual-item"><b>每日打卡</b>：每天可打卡一次，打卡后获得随机金币奖励。</div>
-                <div class="manual-item"><b>基础奖励</b>：10 币基础 + 随机 0~(10+连续加成) 币。连续打卡每满 7 天，随机上限 +5，最高 +20（即最大基础奖励 50 币）。</div>
+                <div class="manual-item"><b>基础奖励</b>：10 币基础 + 随机 0~(10+连续加成) 币。连续打卡每满 7 天，随机上限 +5，最高 +20（即最大基础奖励 40 币）。</div>
                 <div class="manual-item"><b>季节加成</b>：节日期间打卡有额外倍率（1.2x~2.0x），具体见首页活动横幅。</div>
                 <div class="manual-item"><b>装备加成</b>：装备主题/相框可获得额外金币加成（最高 30%）。加成 = 主题加成 + 相框加成 + 拥有数量加成（每 5 件装扮 +1%，上限 10%）。</div>
                 <div class="manual-item"><b>连续打卡</b>：断签一天即重置连续天数。周日判断「周满勤」，月末判断「月满勤」。</div>
@@ -296,7 +297,7 @@ function handleBuyTitle(t) {
                 <div class="manual-sub-title">📌 道具收益</div>
                 <div class="manual-item">随机礼盒 0~100 币、每日转盘 0~200 币、神秘礼盒 0~400 币、点金术 0~1000 币（均为随机）。</div>
                 <div class="manual-sub-title">📌 金币消耗</div>
-                <div class="manual-item">商店商品 25~1500 币、语录包 25~35 币/包、普通扭蛋 150 币/次（650 币/5 次）、高级扭蛋 1500 币/次（6500 币/5 次）。</div>
+                <div class="manual-item">商店商品 25~1500 币、语录包 25~35 币/包、普通扭蛋 50 币/次（225 币/5 次）、高级扭蛋 200 币/次（900 币/5 次）。</div>
                 <div class="manual-sub-title">📌 举例：新用户第一天</div>
                 <div class="manual-item">打卡获得 10+随机0~10 = <b>10~20 币</b>。完成「初来乍到」成就自动获得 <b>+30 币</b>，首日可攒 <b>40~50 币</b>。</div>
                 <div class="manual-tip">💡 提示：坚持连续打卡提升随机上限，装备主题和相框提升加成，节日活动期间多打卡！</div>
@@ -368,12 +369,12 @@ function handleBuyTitle(t) {
                 <span class="manual-arrow" :class="{open: manualSections.gacha}">›</span>
               </button>
               <Transition name="expand"><div v-if="manualSections.gacha" class="manual-content">
-                <div class="manual-item"><b>普通扭蛋</b>（150币/次，650币/5次）：</div>
+                <div class="manual-item"><b>普通扭蛋</b>（50币/次，225币/5次）：</div>
                 <div class="manual-sub">• 传说 0.5% | 史诗 3% | 稀有 12% | 普通 84.5%</div>
                 <div class="manual-sub">• 普通结果返还 30/50/100 币</div>
-                <div class="manual-sub">• 保底：50 次未出稀有+，下次必出史诗以上</div>
+                <div class="manual-sub">• 保底：30 次未出稀有+，下次必出史诗以上</div>
                 <div class="manual-sub">• 五连保底：最后一抽至少稀有</div>
-                <div class="manual-item"><b>高级扭蛋</b>（1500币/次，6500币/5次）：</div>
+                <div class="manual-item"><b>高级扭蛋</b>（200币/次，900币/5次）：</div>
                 <div class="manual-sub">• 传说 3% | 史诗 12% | 稀有 25% | 普通 60%</div>
                 <div class="manual-sub">• 普通结果固定返还 100 币</div>
                 <div class="manual-sub">• 五连保底：最后一抽至少史诗</div>
@@ -487,7 +488,7 @@ function handleBuyTitle(t) {
                 <div class="manual-item"><b>恢复数据</b>：在「更多 → 恢复数据」导入之前备份的 JSON 文件，恢复后自动刷新。</div>
                 <div class="manual-item"><b>重置数据</b>：在「更多 → 重置所有数据」清除全部数据，需要三步确认，不可恢复！</div>
                 <div class="manual-item"><b>深色模式</b>：在「更多 → 深色/浅色模式」切换，深色模式默认开启。</div>
-                <div class="manual-tip">💡 提示：定期备份数据，换浏览器或清理缓存时不会丢失进度！</div>
+                <div class="manual-tip">💡 提示：定期备份数据，清理缓存时不会丢失进度！</div>
               </div></Transition>
             </div>
 
@@ -503,7 +504,7 @@ function handleBuyTitle(t) {
                 <div class="manual-item"><b>Q：断签了连续天数归零？</b></div>
                 <div class="manual-sub">A：是的，连续打卡要求每天都签到。只要断一天就会重新计算。建议养成每天打卡的习惯！</div>
                 <div class="manual-item"><b>Q：抽奖一直不出好东西？</b></div>
-                <div class="manual-sub">A：普通扭蛋有 50 次保底机制，50 次未出稀有+则下次必出史诗以上。五连抽也有保底（最后一抽至少稀有）。坚持抽总会出的！</div>
+                <div class="manual-sub">A：普通扭蛋有 30 次保底机制，30 次未出稀有+则下次必出史诗以上。高级扭蛋有 20 次保底（保底至少传说）。五连抽也有保底（最后一抽至少稀有/史诗）。坚持抽总会出的！</div>
                 <div class="manual-item"><b>Q：限时商店的物品会重复吗？</b></div>
                 <div class="manual-sub">A：每天的 5 件折扣商品基于日期伪随机生成，同一天看到的物品相同。已购买的物品会灰显无法重复购买。</div>
                 <div class="manual-item"><b>Q：语录包买了但首页没显示新语录？</b></div>

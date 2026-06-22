@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, provide } from 'vue'
 import { useGameStore } from './stores/game'
 import { useShopStore } from './stores/shop'
 import PageHome from './pages/PageHome.vue'
@@ -7,22 +7,40 @@ import AchievementToast from './components/AchievementToast.vue'
 
 const store = useGameStore()
 const shop = useShopStore()
+
 const loaded = ref(false)
+const pageBg = ref(null)
+provide('setAppPageBg', (bg) => { pageBg.value = bg })
 const toastQueue = ref([])
 let toastId = 0
 
 onMounted(() => {
   setTimeout(() => loaded.value = true, 50)
-  // 延迟调用 popToasts，确保 checkAchievements 已完成
-  setTimeout(() => {
-    const toasts = store.popToasts()
-    toasts.forEach(t => showToast(t))
-  }, 200)
 })
 
+const pendingToasts = []
+let processing = false
+
+function processToastQueue() {
+  if (processing) return
+  if (pendingToasts.length === 0) { processing = false; return }
+  processing = true
+  const text = pendingToasts.shift()
+  const id = ++toastId
+  toastQueue.value.push({ id, text })
+  setTimeout(() => {
+    const idx = toastQueue.value.findIndex(t => t.id === id)
+    if (idx !== -1) toastQueue.value.splice(idx, 1)
+  }, 3800)
+  setTimeout(() => {
+    processing = false
+    processToastQueue()
+  }, 1500)
+}
+
 function showToast(text) {
-  toastQueue.value.push({ id: ++toastId, text })
-  setTimeout(() => toastQueue.value.shift(), 3800)
+  pendingToasts.push(text)
+  processToastQueue()
 }
 
 const greeting = computed(() => {
@@ -43,7 +61,7 @@ const greetingIcon = computed(() => {
 </script>
 
 <template>
-  <div class="app" :class="{ loaded, 'app-dark': shop.darkMode }">
+  <div class="app" :class="{ loaded, 'app-dark': shop.darkMode }" :style="pageBg && !shop.darkMode ? { background: pageBg } : {}">
     <header class="topbar glass">
       <div class="brand">
         <div class="logo-wrap">
@@ -93,10 +111,10 @@ const greetingIcon = computed(() => {
   justify-content: space-between;
   padding: 0 40px;
   height: 68px;
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: blur(24px) saturate(1.3);
-  -webkit-backdrop-filter: blur(24px) saturate(1.3);
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(30px) saturate(1.4);
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
+  border-bottom: 1px solid rgba(255,255,255,0.3);
   flex-shrink: 0;
   z-index: 10;
   position: relative;
@@ -194,15 +212,16 @@ const greetingIcon = computed(() => {
   position: fixed;
   top: 84px;
   right: 32px;
-  z-index: 200;
+  z-index: 10001;
   display: flex;
   flex-direction: column;
   gap: 12px;
   pointer-events: none;
 }
 .toast-enter-active { animation: t-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.toast-leave-active { animation: t-in 0.3s ease reverse; }
+.toast-leave-active { animation: t-out 0.3s ease forwards; }
 @keyframes t-in { from { opacity: 0; transform: translateX(32px) scale(0.92); } }
+@keyframes t-out { to { opacity: 0; transform: translateY(-8px) scale(0.95); } }
 </style>
 
 <!-- 深色模式 -->

@@ -7,11 +7,34 @@
       <div class="effect-center">
         <div class="effect-reward">
           <span class="reward-icon">{{ rewardIcon }}</span>
-          <span class="reward-amount">+{{ reward }} 币</span>
+          <span class="reward-amount">+{{ details?.reward || 0 }} 币</span>
         </div>
-        <div v-if="bonusRate > 0" class="bonus-tag">
-          <span class="bonus-icon">✨</span>
-          <span>装备加成 +{{ bonusRate }}%</span>
+        <div v-if="details" class="bonus-list">
+          <div class="bonus-row">
+            <span class="bonus-label">基础奖励</span>
+            <span class="bonus-val">+{{ details.base }}</span>
+          </div>
+          <div class="bonus-row">
+            <span class="bonus-label">随机奖励</span>
+            <span class="bonus-val">+{{ details.random }}</span>
+          </div>
+          <div v-if="details.streakBonus > 0" class="bonus-row">
+            <span class="bonus-label">🔥 连续打卡加成</span>
+            <span class="bonus-val accent">+{{ details.streakBonus }}</span>
+          </div>
+          <div v-if="details.seasonBonus > 0" class="bonus-row">
+            <span class="bonus-label">🎉 季节活动加成</span>
+            <span class="bonus-val accent">+{{ details.seasonBonus }}</span>
+          </div>
+          <div v-if="details.equipBonus > 0" class="bonus-row">
+            <span class="bonus-label">✨ 装备加成 +{{ details.equipBonusRate }}%</span>
+            <span class="bonus-val accent">+{{ details.equipBonus }}</span>
+          </div>
+          <div class="bonus-divider"></div>
+          <div class="bonus-row total">
+            <span class="bonus-label">合计</span>
+            <span class="bonus-val">+{{ details.reward }}</span>
+          </div>
         </div>
         <div class="effect-hint">点击任意位置关闭</div>
       </div>
@@ -24,9 +47,8 @@ import { ref, watch, nextTick, onUnmounted } from 'vue'
 
 const props = defineProps({
   show: Boolean,
-  effect: String, // 特效类型
-  reward: Number,
-  bonusRate: Number,
+  effect: String,
+  details: Object,
 })
 
 const emit = defineEmits(['close'])
@@ -654,6 +676,37 @@ onUnmounted(() => {
 .bonus-icon {
   font-size: 18px;
 }
+.bonus-list {
+  margin-top: 20px;
+  padding: 16px 24px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  min-width: 220px;
+  animation: bonus-slide 0.8s ease-out 0.3s both;
+}
+.bonus-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+}
+.bonus-row.total {
+  font-weight: 800;
+  font-size: 16px;
+  color: #ffd700;
+}
+.bonus-label { font-weight: 500; }
+.bonus-val { font-weight: 700; color: rgba(255,255,255,0.9); }
+.bonus-val.accent { color: #ffd700; }
+.bonus-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.12);
+  margin: 6px 0;
+}
 .effect-hint {
   margin-top: 40px;
   font-size: 14px;
@@ -680,7 +733,7 @@ onUnmounted(() => {
 .effect-fade-enter-from, .effect-fade-leave-to { opacity: 0; }
 
 /* 深色模式 */
-:deep(.dark-mode) .effect-overlay {
+:global(.dark-mode) .effect-overlay {
   background: rgba(0,0,0,0.6);
 }
 </style>

@@ -8,3 +8,16 @@ release/
 *.local
 *.cache
 *.tsbuildinfo
+
+# Development notes
+MEMORY.md
+PROJECT_ONBOARDING.md
+findings.md
+implementation_plan.md
+progress.md
+task_plan.md
+docs/
+
+# Old root-level files (moved to electron/)
+electron.js
+preload.js

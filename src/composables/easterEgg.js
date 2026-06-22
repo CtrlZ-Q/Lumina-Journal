@@ -17,3 +17,7 @@ export function markEasterClaimed(eventId, year, month, day) {
   claims[key] = true
   saveState(claims, EASTER_KEY)
 }
+
+export function resetEasterClaims() {
+  saveState(null, EASTER_KEY)
+}

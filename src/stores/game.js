@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { loadState, saveState, SHOP_KEY } from '../composables/useStorage'
-import { catalog } from '../data/catalog'
+import { catalog, gachaPool, premiumGachaPool } from '../data/catalog'
 import { getActiveSeasonalEvent, moodOptions } from '../data/seasonalEvents'
+import { useShopStore } from './shop'
 
 function today() {
   const d = new Date()
@@ -40,6 +41,7 @@ export const useGameStore = defineStore('game', () => {
   const saved = loadState()
   const state = saved ? { ...defaultState(), ...saved } : defaultState()
 
+  const resetVersion = ref(0)
   const checkins = ref(state.checkins)
   const coins = ref(state.coins)
   const achievements = ref(state.achievements)
@@ -65,7 +67,7 @@ export const useGameStore = defineStore('game', () => {
 
   function logCoin(amount, reason) {
     const now = new Date()
-    const time = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+    const time = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
     coinLog.value.unshift({ time, amount, reason, balance: coins.value })
     if (coinLog.value.length > 200) coinLog.value.length = 200
   }
@@ -126,17 +128,26 @@ export const useGameStore = defineStore('game', () => {
     })
   }, { deep: true })
 
+  // 最低金币追踪（商店消费也会触发）
+  watch(coins, (val) => {
+    if (val < minCoinsEver.value) minCoinsEver.value = val
+  })
+
   function checkIn() {
     if (checkedToday.value) return null
-    checkins.value.push(today())
+    const todayStr = today()
+    checkins.value.push(todayStr)
     const base = 10
     const streakBonus = Math.min(Math.floor(streakDays.value / 7) * 5, 20)
     const random = Math.floor(Math.random() * (11 + streakBonus))
     let reward = base + random
+    const details = { base, random, streakBonus, seasonBonus: 0, equipBonusRate: 0, equipBonus: 0 }
     // 季节活动金币加成
     const season = getActiveSeasonalEvent()
     if (season && season.coinBonus > 1) {
+      const before = reward
       reward = Math.round(reward * season.coinBonus)
+      details.seasonBonus = reward - before
     }
     // 装备金币加成（主题+相框）
     try {
@@ -159,12 +170,16 @@ export const useGameStore = defineStore('game', () => {
         bonusRate += Math.min(Math.floor(ownedCount / 5), 10)
         bonusRate = Math.min(bonusRate, 30)
         if (bonusRate > 0) {
+          const before = reward
           reward = Math.round(reward * (100 + bonusRate) / 100)
+          details.equipBonusRate = bonusRate
+          details.equipBonus = reward - before
         }
       }
     } catch {}
     coins.value += reward
     logCoin(reward, '📅 签到')
+    details.reward = reward
 
     // 时间成就
     const hour = new Date().getHours()
@@ -178,7 +193,6 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 连续早起打卡（仅在签到时检测，防止日记写入刷次数）
-    const todayStr = today()
     const yesterdayOfToday = new Date()
     yesterdayOfToday.setDate(yesterdayOfToday.getDate() - 1)
     const yesterdayStr = dateStr(yesterdayOfToday)
@@ -220,8 +234,8 @@ export const useGameStore = defineStore('game', () => {
 
     // 组合成就：签到部分
     const cd = comboDailyDone.value
-    if (cd.date !== today()) {
-      comboDailyDone.value = { checkin: true, diary: false, quote: false, date: today() }
+    if (cd.date !== todayStr) {
+      comboDailyDone.value = { checkin: true, diary: false, quote: false, date: todayStr }
     } else {
       cd.checkin = true
     }
@@ -231,11 +245,11 @@ export const useGameStore = defineStore('game', () => {
       minCoinsEver.value = coins.value
     }
 
-    checkAchievements()
-    return reward
+    const progress = notifyProgress()
+    return { ...details, ...progress }
   }
 
-  function getDialogue() {
+  function getDialogue(shopData) {
     const base = [
       '今天也要加油哦~',
       '打卡使我快乐！',
@@ -251,48 +265,47 @@ export const useGameStore = defineStore('game', () => {
     if (season && season.freeQuotes) {
       base.push(...season.freeQuotes)
     }
-    // 扩展语录包（从 shop store 的 localStorage 读取，避免循环依赖）
-    try {
-      const shopData = loadState(SHOP_KEY)
-      if (shopData) {
-        const selected = shopData.selectedQuoteCategories || []
-        const explicitlySet = shopData.quoteCategoriesExplicitlySet || false
-        const extra = (shopData.purchasedItems || [])
-          .filter(id => {
-            const item = catalog.find(i => i.id === id)
-            if (!item || item.category !== 'quote') return false
-            // 有选择类别，只包含选中的；没选则全部显示
-            if (selected.length > 0 && !selected.includes(id)) return false
-            return true
-          })
-          .flatMap(id => catalog.find(i => i.id === id).data.quotes)
-        if (extra.length > 0) {
-          base.push(...extra)
-        }
-        // 隐藏台词（购买特定商品解锁）
-        const hiddenDialogues = [
-          { id: 'hd_theme_aurora', itemId: 'theme_aurora', text: '极光之下，万物皆可期~' },
-          { id: 'hd_theme_galaxy', itemId: 'theme_galaxy', text: '银河深处，藏着你的专属星辰✨' },
-          { id: 'hd_theme_black', itemId: 'theme_black', text: '星空黑的秘密：黑夜给了我黑色的眼睛~' },
-          { id: 'hd_theme_cyber', itemId: 'theme_cyber', text: '赛博朋克：欢迎来到2077年！' },
-          { id: 'hd_effect_galaxy', itemId: 'effect_galaxy', text: '银河漩涡启动！准备穿越时空~' },
-          { id: 'hd_effect_aurora', itemId: 'effect_aurora', text: '极光绽放，好运将至！' },
-          { id: 'hd_effect_magic', itemId: 'effect_magic_circle', text: '魔法阵展开！今日份的魔法已到账~' },
-          { id: 'hd_frame_aurora', itemId: 'frame_aurora', text: '极光相框：每张周报都是一幅画~' },
-          { id: 'hd_frame_galaxy', itemId: 'frame_galaxy', text: '银河相框：你的周报闪闪发光！' },
-          { id: 'hd_frame_gold', itemId: 'frame_gold', text: '金光闪闪！土豪专属周报~' },
-          { id: 'hd_sound_space', itemId: 'sound_space', text: '太空音效：3...2...1...发射！🚀' },
-          { id: 'hd_sound_crystal', itemId: 'sound_crystal', text: '水晶之音，清脆悦耳~' },
-        ]
-        const unlocked = shopData.unlockedHiddenDialogues || []
-        const hiddenTexts = hiddenDialogues
-          .filter(hd => unlocked.includes(hd.id) || (shopData.purchasedItems || []).includes(hd.itemId))
-          .map(hd => hd.text)
-        if (hiddenTexts.length > 0) {
-          base.push(...hiddenTexts)
-        }
+    // 扩展语录包（直接从 shop store 传入，避免缓存延迟）
+    if (shopData) {
+      const allItems = [...catalog, ...gachaPool, ...(premiumGachaPool || [])]
+      const selected = shopData.selectedQuoteCategories || []
+      const explicitlySet = shopData.quoteCategoriesExplicitlySet || false
+      const extra = (shopData.purchasedItems || [])
+        .filter(id => {
+          const item = allItems.find(i => i.id === id)
+          if (!item || item.category !== 'quote') return false
+          // 从未设置 → 全部显示；已设置 → 只显示选中的
+          if (explicitlySet && selected.length === 0) return false
+          if (selected.length > 0 && !selected.includes(id)) return false
+          return true
+        })
+        .flatMap(id => allItems.find(i => i.id === id)?.data?.quotes || [])
+      if (extra.length > 0) {
+        base.push(...extra)
       }
-    } catch {}
+      // 隐藏台词（购买特定商品解锁）
+      const hiddenDialogues = [
+        { id: 'hd_theme_aurora', itemId: 'theme_aurora', text: '极光之下，万物皆可期~' },
+        { id: 'hd_theme_galaxy', itemId: 'theme_galaxy', text: '银河深处，藏着你的专属星辰✨' },
+        { id: 'hd_theme_black', itemId: 'theme_black', text: '星空黑的秘密：黑夜给了我黑色的眼睛~' },
+        { id: 'hd_theme_cyber', itemId: 'theme_cyber', text: '赛博朋克：欢迎来到2077年！' },
+        { id: 'hd_effect_galaxy', itemId: 'effect_galaxy', text: '银河漩涡启动！准备穿越时空~' },
+        { id: 'hd_effect_aurora', itemId: 'effect_aurora', text: '极光绽放，好运将至！' },
+        { id: 'hd_effect_magic', itemId: 'effect_magic_circle', text: '魔法阵展开！今日份的魔法已到账~' },
+        { id: 'hd_frame_aurora', itemId: 'frame_aurora', text: '极光相框：每张周报都是一幅画~' },
+        { id: 'hd_frame_galaxy', itemId: 'frame_galaxy', text: '银河相框：你的周报闪闪发光！' },
+        { id: 'hd_frame_gold', itemId: 'frame_gold', text: '金光闪闪！土豪专属周报~' },
+        { id: 'hd_sound_space', itemId: 'sound_space', text: '太空音效：3...2...1...发射！🚀' },
+        { id: 'hd_sound_crystal', itemId: 'sound_crystal', text: '水晶之音，清脆悦耳~' },
+      ]
+      const unlocked = shopData.unlockedHiddenDialogues || []
+      const hiddenTexts = hiddenDialogues
+        .filter(hd => unlocked.includes(hd.id) || (shopData.purchasedItems || []).includes(hd.itemId))
+        .map(hd => hd.text)
+      if (hiddenTexts.length > 0) {
+        base.push(...hiddenTexts)
+      }
+    }
     return base[Math.floor(Math.random() * base.length)]
   }
 
@@ -319,157 +332,206 @@ export const useGameStore = defineStore('game', () => {
     repeatableCounts.value[id] = (repeatableCounts.value[id] || 0) + 1
   }
 
-  // 检查本周是否满勤（周一到周日全部打卡）
+  // 检查本周是否满勤（必须是周日且周一到周日全部打卡）
   function isPerfectWeek() {
     const now = new Date()
     const dayOfWeek = now.getDay() // 0=周日
+    if (dayOfWeek !== 0) return false // 只在周日判定
     const startOfWeek = new Date(now)
-    startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)) // 周一开始
+    startOfWeek.setDate(now.getDate() - 6) // 周一
     for (let i = 0; i < 7; i++) {
       const d = new Date(startOfWeek)
       d.setDate(startOfWeek.getDate() + i)
-      if (d > now) break // 还没到的日子跳过
       if (!checkins.value.includes(dateStr(d))) return false
     }
-    return true // 7天全部打卡
+    return true
   }
 
-  // 检查本月是否满勤
+  // 检查本月是否满勤（必须是月末且全月都打卡）
   function isPerfectMonth() {
     const now = new Date()
-    const todayDate = now.getDate()
-    for (let d = 1; d <= todayDate; d++) {
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    if (now.getDate() !== lastDay) return false // 只在月末判定
+    for (let d = 1; d <= lastDay; d++) {
       const ds = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
       if (!checkins.value.includes(ds)) return false
     }
     return true
   }
 
+  function getISOWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+    const dayNum = d.getUTCDay() || 7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
+  }
+
   function checkAchievements() {
-    const newToasts = []
-    const streak = streakDays.value
-    const total = totalCheckins.value
-    const now = new Date()
-    const day = now.getDay()
-    const todayStr = today()
+    const newlyUnlocked = []
+    const tryUnlock = (id, reward) => { if (unlockAchievement(id, reward)) newlyUnlocked.push(id) }
 
-    // ===== 一次性成就：连续打卡 =====
-    if (streak >= 3 && unlockAchievement('streak_3', 20)) newToasts.push('🏆 初露锋芒！+20币')
-    if (streak >= 7 && unlockAchievement('streak_7', 50)) newToasts.push('🏆 一周坚持！+50币')
-    if (streak >= 14 && unlockAchievement('streak_14', 100)) newToasts.push('🏆 两周不辍！+100币')
-    if (streak >= 30 && unlockAchievement('streak_30', 200)) newToasts.push('🏆 月度达人！+200币')
-    if (streak >= 100 && unlockAchievement('streak_100', 500)) newToasts.push('🏆 百日王者！+500币')
-    if (streak >= 365 && unlockAchievement('streak_365', 2000)) newToasts.push('🏆 年度传说！+2000币')
+    // 连续打卡天数
+    const sd = streakDays.value
+    if (sd >= 3) tryUnlock('streak_3', 20)
+    if (sd >= 7) tryUnlock('streak_7', 50)
+    if (sd >= 14) tryUnlock('streak_14', 100)
+    if (sd >= 30) tryUnlock('streak_30', 200)
+    if (sd >= 100) tryUnlock('streak_100', 500)
+    if (sd >= 365) tryUnlock('streak_365', 2000)
 
-    // ===== 一次性成就：累计打卡 =====
-    if (total >= 10 && unlockAchievement('total_10', 30)) newToasts.push('🏆 起步！+30币')
-    if (total >= 50 && unlockAchievement('total_50', 150)) newToasts.push('🏆 半百！+150币')
-    if (total >= 100 && unlockAchievement('total_100', 300)) newToasts.push('🏆 百日纪念！+300币')
-    if (total >= 365 && unlockAchievement('total_365', 1000)) newToasts.push('🏆 年度传奇！+1000币')
-    if (total >= 500 && unlockAchievement('total_500', 1500)) newToasts.push('🏆 五百天！+1500币')
-    if (total >= 1000 && unlockAchievement('total_1000', 3000)) newToasts.push('🏆 千日征程！+3000币')
+    // 总打卡次数
+    const tc = totalCheckins.value
+    if (tc >= 10) tryUnlock('total_10', 30)
+    if (tc >= 50) tryUnlock('total_50', 150)
+    if (tc >= 100) tryUnlock('total_100', 300)
+    if (tc >= 365) tryUnlock('total_365', 1000)
+    if (tc >= 500) tryUnlock('total_500', 1500)
+    if (tc >= 1000) tryUnlock('total_1000', 3000)
 
-    // ===== 一次性成就：金币 =====
-    if (coins.value >= 100 && unlockAchievement('coin_100', 30)) newToasts.push('🏆 小富即安！+30币')
-    if (coins.value >= 500 && unlockAchievement('coin_500', 80)) newToasts.push('🏆 财源广进！+80币')
-    if (coins.value >= 1000 && unlockAchievement('coin_1000', 150)) newToasts.push('🏆 日进斗金！+150币')
-    if (coins.value >= 5000 && unlockAchievement('coin_5000', 500)) newToasts.push('🏆 金币大亨！+500币')
-    if (coins.value >= 10000 && unlockAchievement('coin_10000', 1000)) newToasts.push('🏆 金币帝王！+1000币')
+    // 金币里程碑
+    const earned = coins.value + totalSpent.value
+    if (earned >= 100) tryUnlock('coin_100', 30)
+    if (earned >= 500) tryUnlock('coin_500', 80)
+    if (earned >= 1000) tryUnlock('coin_1000', 150)
+    if (earned >= 5000) tryUnlock('coin_5000', 500)
+    if (earned >= 10000) tryUnlock('coin_10000', 1000)
 
-    // ===== 一次性成就：日记 =====
-    if (journal.value.length >= 5 && unlockAchievement('journal_5', 20)) newToasts.push('🏆 心声记录者！+20币')
-    if (journal.value.length >= 20 && unlockAchievement('journal_20', 60)) newToasts.push('🏆 日记达人！+60币')
-    if (journal.value.length >= 50 && unlockAchievement('journal_50', 150)) newToasts.push('🏆 日记大师！+150币')
-    if (journal.value.length >= 100 && unlockAchievement('journal_100', 300)) newToasts.push('🏆 百篇心声！+300币')
+    // 日记数量
+    const jc = journal.value.length
+    if (jc >= 5) tryUnlock('journal_5', 20)
+    if (jc >= 20) tryUnlock('journal_20', 60)
+    if (jc >= 50) tryUnlock('journal_50', 150)
+    if (jc >= 100) tryUnlock('journal_100', 300)
 
-    // ===== 一次性成就：收藏 =====
-    if (favoriteQuotes.value.length >= 1 && unlockAchievement('quote_collect', 10)) newToasts.push('🏆 语录猎人！+10币')
-    if (favoriteQuotes.value.length >= 5 && unlockAchievement('quote_5', 40)) newToasts.push('🏆 名言收藏家！+40币')
-    if (favoriteQuotes.value.length >= 10 && unlockAchievement('quote_10', 80)) newToasts.push('🏆 语录百晓生！+80币')
-    if (favoriteQuotes.value.length >= 20 && unlockAchievement('quote_20', 150)) newToasts.push('🏆 语录图书馆！+150币')
+    // 收藏语录
+    const fq = favoriteQuotes.value.length
+    if (fq >= 1) tryUnlock('quote_collect', 10)
+    if (fq >= 5) tryUnlock('quote_5', 40)
+    if (fq >= 10) tryUnlock('quote_10', 80)
+    if (fq >= 20) tryUnlock('quote_20', 150)
 
-    // ===== 一次性成就：隐藏台词 =====
-    if (collectedDialogues.value.length >= 12 && unlockAchievement('dialogue_all', 100)) newToasts.push('🏆 知心好友！+100币')
+    // 周末打卡
+    if (weekendCheckins.value >= 1) tryUnlock('weekend', 25)
+    if (weekendCheckins.value >= 10) tryUnlock('weekend_10', 80)
 
-    // ===== 一次性成就：特殊时间 =====
-    if ((day === 0 || day === 6) && streak >= 2 && unlockAchievement('weekend', 25)) newToasts.push('🏆 周末不松懈！+25币')
-
-    // ===== 循环成就：每周满勤 =====
-    const lastPerfectWeekDate = repeatableCounts.value['perfect_week_date'] || ''
-    if (day === 0 && isPerfectWeek() && lastPerfectWeekDate !== todayStr) {
-      repeatableCounts.value['perfect_week_date'] = todayStr
-      incrementRepeat('perfect_week')
-      const count = getRepeatCount('perfect_week')
-      if (count >= 1 && unlockAchievement('perfect_week_1', 50)) newToasts.push('🏆 首次周满勤！+50币')
-      if (count >= 4 && unlockAchievement('perfect_week_4', 150)) newToasts.push('🏆 四周满勤！+150币')
-      if (count >= 12 && unlockAchievement('perfect_week_12', 500)) newToasts.push('🏆 季度全勤！+500币')
-      if (count >= 52 && unlockAchievement('perfect_week_52', 2000)) newToasts.push('🏆 年度全勤！+2000币')
-    }
-
-    // ===== 循环成就：每月满勤 =====
-    const todayDate = now.getDate()
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-    const lastPerfectMonthDate = repeatableCounts.value['perfect_month_date'] || ''
-    if (todayDate === lastDay && isPerfectMonth() && lastPerfectMonthDate !== todayStr) {
-      repeatableCounts.value['perfect_month_date'] = todayStr
-      incrementRepeat('perfect_month')
-      const count = getRepeatCount('perfect_month')
-      if (count >= 1 && unlockAchievement('perfect_month_1', 200)) newToasts.push('🏆 首次月满勤！+200币')
-      if (count >= 3 && unlockAchievement('perfect_month_3', 500)) newToasts.push('🏆 三月连勤！+500币')
-      if (count >= 6 && unlockAchievement('perfect_month_6', 1000)) newToasts.push('🏆 半年全勤！+1000币')
-      if (count >= 12 && unlockAchievement('perfect_month_12', 3000)) newToasts.push('🏆 年度月月满勤！+3000币')
-    }
-
-    // ===== 心情成就 =====
-    if (usedMoods.value.length >= 1 && unlockAchievement('mood_first', 10)) newToasts.push('😊 情绪初探！+10币')
-    if (usedMoods.value.length >= 5 && unlockAchievement('mood_all_5', 60)) newToasts.push('🎨 五味杂陈！+60币')
-    if (moodStreakDays.value.count >= 7 && unlockAchievement('mood_streak_7', 80)) newToasts.push('📖 情绪日记家！+80币')
-
-    // ===== 消费成就 =====
-    if (totalSpent.value >= 100 && unlockAchievement('spend_100', 20)) newToasts.push('💸 初次破费！+20币')
-    if (totalSpent.value >= 500 && unlockAchievement('spend_500', 60)) newToasts.push('🛍️ 购物达人！+60币')
-    if (totalSpent.value >= 2000 && unlockAchievement('spend_2000', 150)) newToasts.push('💳 剁手党！+150币')
-    if (totalSpent.value >= 5000 && unlockAchievement('spend_5000', 400)) newToasts.push('💎 土豪降临！+400币')
-
-    // ===== 日记深度成就 =====
-    if (diaryStreak.value.count >= 7 && unlockAchievement('diary_streak_7', 80)) newToasts.push('✍️ 笔耕不辍！+80币')
-    if (diaryStreak.value.count >= 30 && unlockAchievement('diary_streak_30', 300)) newToasts.push('📕 日记人生！+300币')
-
-    // ===== 收集成就 =====
-    try {
-      const shopData = loadState(SHOP_KEY)
-      if (shopData) {
-        const owned = shopData.purchasedItems || []
-        const themeCount = owned.filter(id => { const item = catalog.find(i => i.id === id); return item && item.category === 'theme' }).length
-        const effectCount = owned.filter(id => { const item = catalog.find(i => i.id === id); return item && item.category === 'effect' }).length
-        const frameCount = owned.filter(id => { const item = catalog.find(i => i.id === id); return item && item.category === 'frame' }).length
-        if (themeCount >= 3 && unlockAchievement('own_theme_3', 60)) newToasts.push('🎨 主题收藏家！+60币')
-        if (effectCount >= 3 && unlockAchievement('own_effect_3', 60)) newToasts.push('✨ 特效大师！+60币')
-        if (frameCount >= 5 && unlockAchievement('own_all_frame', 100)) newToasts.push('🖼️ 相框全集！+100币')
+    // 满勤周（累计）
+    if (isPerfectWeek()) {
+      const now = new Date()
+      const weekId = `${now.getFullYear()}-W${getISOWeekNumber(now)}`
+      const lastWeek = repeatableCounts.value['perfect_week_last'] || ''
+      if (lastWeek !== weekId) {
+        repeatableCounts.value['perfect_week_count'] = (repeatableCounts.value['perfect_week_count'] || 0) + 1
+        repeatableCounts.value['perfect_week_last'] = weekId
       }
-    } catch {}
+      const pwc = repeatableCounts.value['perfect_week_count'] || 0
+      if (pwc >= 1) tryUnlock('perfect_week_1', 50)
+      if (pwc >= 4) tryUnlock('perfect_week_4', 150)
+      if (pwc >= 12) tryUnlock('perfect_week_12', 500)
+      if (pwc >= 52) tryUnlock('perfect_week_52', 2000)
+    }
 
-    // ===== 组合成就 =====
-    if (weekendCheckins.value >= 10 && unlockAchievement('weekend_10', 80)) newToasts.push('⚔️ 周末战士！+80币')
-    if (quoteCollectStreak.value.count >= 3 && unlockAchievement('quote_daily', 40)) newToasts.push('📰 语录鉴赏家！+40币')
+    // 满勤月（累计）
+    if (isPerfectMonth()) {
+      const now = new Date()
+      const monthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      const lastMonth = repeatableCounts.value['perfect_month_last'] || ''
+      if (lastMonth !== monthId) {
+        repeatableCounts.value['perfect_month_count'] = (repeatableCounts.value['perfect_month_count'] || 0) + 1
+        repeatableCounts.value['perfect_month_last'] = monthId
+      }
+      const pmc = repeatableCounts.value['perfect_month_count'] || 0
+      if (pmc >= 1) tryUnlock('perfect_month_1', 200)
+      if (pmc >= 3) tryUnlock('perfect_month_3', 500)
+      if (pmc >= 6) tryUnlock('perfect_month_6', 1000)
+      if (pmc >= 12) tryUnlock('perfect_month_12', 3000)
+    }
 
-    // 完美一天
+    // 心情成就
+    if (usedMoods.value.length >= 1) tryUnlock('mood_first', 10)
+    if (usedMoods.value.length >= 5) tryUnlock('mood_all_5', 60)
+    if (moodStreakDays.value.count >= 7) tryUnlock('mood_streak_7', 80)
+
+    // 消费里程碑
+    if (totalSpent.value >= 100) tryUnlock('spend_100', 20)
+    if (totalSpent.value >= 500) tryUnlock('spend_500', 60)
+    if (totalSpent.value >= 2000) tryUnlock('spend_2000', 150)
+    if (totalSpent.value >= 5000) tryUnlock('spend_5000', 400)
+
+    // 日记连续天数
+    if (diaryStreak.value.count >= 7) tryUnlock('diary_streak_7', 80)
+    if (diaryStreak.value.count >= 30) tryUnlock('diary_streak_30', 300)
+
+    // 语录收藏连续天数
+    if (quoteCollectStreak.value.count >= 7) tryUnlock('quote_daily', 40)
+
+    // 组合成就：签到+日记+语录同日完成
     const cd = comboDailyDone.value
     if (cd.date === today() && cd.checkin && cd.diary && cd.quote) {
-      if (unlockAchievement('combo_daily', 40)) newToasts.push('🌟 完美一天！+40币')
+      tryUnlock('combo_daily', 40)
     }
 
-    // 触底反弹
-    if (!coinRecoveryTriggered.value) {
-      if (coins.value < minCoinsEver.value) minCoinsEver.value = coins.value
-      if (minCoinsEver.value <= 10 && coins.value >= 500) {
-        coinRecoveryTriggered.value = true
-        if (unlockAchievement('coin_recovery', 100)) newToasts.push('📈 触底反弹！+100币')
+    // 金币回升
+    if (!coinRecoveryTriggered.value && minCoinsEver.value <= 0 && coins.value > 0) {
+      coinRecoveryTriggered.value = true
+      tryUnlock('coin_recovery', 100)
+    }
+
+    // 收集全部隐藏台词（12个）
+    if (collectedDialogues.value.length >= 12) tryUnlock('dialogue_all', 100)
+
+    // 拥有物品成就（访问 shop store）
+    try {
+      const shop = useShopStore()
+      const purchased = shop.purchasedItems || []
+      const themeCount = catalog.filter(i => i.category === 'theme' && purchased.includes(i.id)).length
+      const effectCount = catalog.filter(i => i.category === 'effect' && purchased.includes(i.id)).length
+      const frameCount = catalog.filter(i => i.category === 'frame' && purchased.includes(i.id)).length
+      const allFrames = catalog.filter(i => i.category === 'frame')
+      if (themeCount >= 3) tryUnlock('own_theme_3', 60)
+      if (effectCount >= 3) tryUnlock('own_effect_3', 60)
+      if (allFrames.length > 0 && allFrames.every(f => purchased.includes(f.id))) tryUnlock('own_all_frame', 100)
+    } catch {}
+
+    // 新增 toast
+    for (const id of newlyUnlocked) {
+      const toastMap = {
+        streak_3: '🔥 连续3天！+20币', streak_7: '🔥 连续7天！+50币',
+        streak_14: '🔥 连续14天！+100币', streak_30: '🔥 连续30天！+200币',
+        streak_100: '🔥 连续100天！+500币', streak_365: '🔥 连续365天！+2000币',
+        total_10: '📅 累计打卡10天！+30币', total_50: '📅 累计打卡50天！+150币',
+        total_100: '📅 累计打卡100天！+300币', total_365: '📅 累计打卡365天！+1000币',
+        total_500: '📅 累计打卡500天！+1500币', total_1000: '📅 累计打卡1000天！+3000币',
+        coin_100: '💰 小有积蓄！+30币', coin_500: '💰 财源滚滚！+80币',
+        coin_1000: '💰 千金之富！+150币', coin_5000: '💰 腰缠万贯！+500币', coin_10000: '💎 万金之王！+1000币',
+        journal_5: '📝 初露锋芒！+20币', journal_20: '📝 笔耕不辍！+60币',
+        journal_50: '📝 文思泉涌！+150币', journal_100: '📝 著作等身！+300币',
+        quote_collect: '⭐ 初次收藏！+10币', quote_5: '⭐ 语录达人！+40币',
+        quote_10: '⭐ 金句王！+80币', quote_20: '⭐ 语录大师！+150币',
+        weekend: '🎉 周末打卡！+25币', weekend_10: '🎉 周末战士！+80币',
+        perfect_week_1: '🏆 完美一周！+50币', perfect_week_4: '🏆 4次满勤周！+150币',
+        perfect_week_12: '🏆 12次满勤周！+500币', perfect_week_52: '🏆 52次满勤周！+2000币',
+        perfect_month_1: '🏆 完美一月！+200币', perfect_month_3: '🏆 3次满勤月！+500币',
+        perfect_month_6: '🏆 6次满勤月！+1000币', perfect_month_12: '🏆 12次满勤月！+3000币',
+        mood_first: '😊 初次心情！+10币', mood_all_5: '🌈 心情收集家！+60币', mood_streak_7: '📅 心情连续！+80币',
+        spend_100: '🛒 初次消费！+20币', spend_500: '🛒 消费达人！+60币',
+        spend_2000: '🛒 购物狂！+150币', spend_5000: '🛒 土豪！+400币',
+        diary_streak_7: '📖 日记连续7天！+80币', diary_streak_30: '📖 日记连续30天！+300币',
+        quote_daily: '⭐ 语录连续7天！+40币', combo_daily: '🎯 每日三连！+40币',
+        coin_recovery: '💪 金币回升！+100币',
+        dialogue_all: '🎭 全部台词收集！+100币',
+        own_theme_3: '🎨 拥有3个主题！+60币', own_effect_3: '✨ 拥有3个特效！+60币', own_all_frame: '🖼️ 全部相框收集！+100币',
       }
+      if (toastMap[id]) pendingToasts.push(toastMap[id])
     }
 
-    pendingToasts = [...pendingToasts, ...newToasts]
-    return newToasts
+    return newlyUnlocked
+  }
+
+  function notifyProgress() {
+    const newAchievements = checkAchievements()
+    const toasts = popToasts()
+    return { achievements: newAchievements, toasts }
   }
 
   function popToasts() {
@@ -479,6 +541,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function resetState() {
+    resetVersion.value++
     checkins.value = []
     coins.value = 0
     achievements.value = []
@@ -502,10 +565,22 @@ export const useGameStore = defineStore('game', () => {
     minCoinsEver.value = 999999
     coinRecoveryTriggered.value = false
     pendingToasts = []
+    saveState({
+      checkins: checkins.value, coins: coins.value, achievements: achievements.value,
+      collectedDialogues: collectedDialogues.value, journal: journal.value, favoriteQuotes: favoriteQuotes.value,
+      repeatableCounts: repeatableCounts.value, totalSpent: totalSpent.value,
+      hasEarlyBird: hasEarlyBird.value, hasNightOwl: hasNightOwl.value,
+      timeLetters: timeLetters.value, coinLog: coinLog.value,
+      usedMoods: usedMoods.value, moodStreakDays: moodStreakDays.value,
+      weekendCheckins: weekendCheckins.value, letterSentCount: letterSentCount.value,
+      letterOpenedCount: letterOpenedCount.value, diaryStreak: diaryStreak.value,
+      quoteCollectStreak: quoteCollectStreak.value, comboDailyDone: comboDailyDone.value,
+      minCoinsEver: minCoinsEver.value, coinRecoveryTriggered: coinRecoveryTriggered.value,
+    })
   }
 
   function addJournal(text, mood = null) {
-    journal.value.unshift({ text, date: today(), time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), mood: mood || null })
+    journal.value.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, date: today(), time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), mood: mood || null })
 
     // 心情追踪
     if (mood && !usedMoods.value.includes(mood)) {
@@ -601,7 +676,9 @@ export const useGameStore = defineStore('game', () => {
       }
 
       checkAchievements()
+      return popToasts()
     }
+    return []
   }
 
   function removeFavoriteQuote(index) {
@@ -645,11 +722,11 @@ export const useGameStore = defineStore('game', () => {
     if (letterSentCount.value >= 5) {
       if (unlockAchievement('letter_5', 50)) pendingToasts.push('📬 书信往来！+50币')
     }
-    // 写给未来的我：30天后开启
     const daysDiff = Math.ceil((new Date(openDate) - new Date()) / (1000 * 60 * 60 * 24))
     if (daysDiff >= 30) {
       if (unlockAchievement('letter_to_self', 40)) pendingToasts.push('⏳ 写给未来的我！+40币')
     }
+    return popToasts()
   }
 
   function openTimeLetter(id) {
@@ -658,7 +735,9 @@ export const useGameStore = defineStore('game', () => {
       letter.opened = true
       letterOpenedCount.value++
       if (unlockAchievement('letter_open', 15)) pendingToasts.push('💌 拆信的喜悦！+15币')
+      return popToasts()
     }
+    return []
   }
 
   function removeTimeLetter(id) {
@@ -694,7 +773,7 @@ export const useGameStore = defineStore('game', () => {
   const totalEarned = computed(() => coins.value + totalSpent.value)
 
   return {
-    checkins, coins, achievements,
+    resetVersion, checkins, coins, achievements,
     collectedDialogues,
     journal, favoriteQuotes,
     checkedToday, streakDays, totalCheckins,
@@ -707,5 +786,6 @@ export const useGameStore = defineStore('game', () => {
     pendingLetters, openableLetters, openedLetters,
     achievementRewardTotal, totalEarned,
     coinLog, logCoin,
+    notifyProgress,
   }
 })

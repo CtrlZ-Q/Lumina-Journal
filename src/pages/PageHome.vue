@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, inject } from 'vue'
 import { useGameStore } from '../stores/game'
 import { useShopStore } from '../stores/shop'
 import { moodOptions, getActiveSeasonalEvent } from '../data/seasonalEvents'
@@ -7,6 +7,7 @@ import { isEasterClaimed, markEasterClaimed } from '../composables/easterEgg'
 import { themes } from '../data/themes'
 import CheckinTimeline from '../components/CheckinTimeline.vue'
 import CheckinEffect from '../components/CheckinEffect.vue'
+import ThemeDecor from '../components/ThemeDecor.vue'
 import PageCalendar from './PageCalendar.vue'
 import PageQuote from './PageQuote.vue'
 import PageAchieve from './PageAchieve.vue'
@@ -20,6 +21,13 @@ const emit = defineEmits(['show-toast'])
 const activeTab = ref('home')
 const newJournal = ref('')
 const selectedMood = ref(null)
+const showJournalDetail = ref(false)
+const journalDetail = ref(null)
+
+function openJournalDetail(item) {
+  journalDetail.value = item
+  showJournalDetail.value = true
+}
 
 function submitJournal() {
   const text = newJournal.value.trim()
@@ -55,14 +63,12 @@ const quoteColor = computed(() => {
 const easterEggClaimed = ref(false)
 const easterEggResult = ref(null)
 const easterEggShow = ref(false)
+const easterEggJustClaimed = ref(false)
 
-function checkEasterEggClaimed() {
-  const evt = seasonEvent.value
-  if (!evt?.easterEgg) { easterEggClaimed.value = true; return }
+watch([seasonEvent, () => store.resetVersion], ([evt]) => {
   const today = new Date()
-  easterEggClaimed.value = isEasterClaimed(evt.id, today.getFullYear(), today.getMonth(), today.getDate())
-}
-checkEasterEggClaimed()
+  easterEggClaimed.value = !!evt?.easterEgg && isEasterClaimed(evt.id, today.getFullYear(), today.getMonth(), today.getDate())
+}, { immediate: true })
 
 const encourageLines = [
   '今天也要元气满满哦！', '坚持打卡的你最棒了！', '每一天都值得被珍惜~',
@@ -73,10 +79,12 @@ const encourageLines = [
 
 function claimEasterEgg() {
   const evt = seasonEvent.value
-  if (!evt?.easterEgg || easterEggClaimed.value) return
   const today = new Date()
+  const claimed = evt?.easterEgg && isEasterClaimed(evt.id, today.getFullYear(), today.getMonth(), today.getDate())
+  if (!evt?.easterEgg || easterEggClaimed.value || claimed) return
   markEasterClaimed(evt.id, today.getFullYear(), today.getMonth(), today.getDate())
   easterEggClaimed.value = true
+  easterEggJustClaimed.value = true
   const reward = evt.easterEgg.min + Math.floor(Math.random() * (evt.easterEgg.max - evt.easterEgg.min + 1))
   store.coins += reward
   store.logCoin(reward, `🥚 ${evt.name}彩蛋`)
@@ -99,6 +107,7 @@ function getMoodStyle(key) {
   return moodOptions.find(m => m.key === key) || { icon: '😐', bg: '#f5f5f5', color: '#999' }
 }
 
+
 const weekDayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 const dailyTheme = computed(() => themes[new Date().getDay()])
 const currentTheme = computed(() => {
@@ -114,7 +123,19 @@ const pageTitle = computed(() => {
   return `${dailyTheme.value.icon} ${weekDayNames[new Date().getDay()]}·${dailyTheme.value.name}`
 })
 
+const currentAnimation = computed(() => {
+  if (shop.darkMode) return null
+  if (activeTab.value === 'calendar') return null
+  // 特效优先，其次主题
+  const effect = shop.activeEffect
+  if (effect?.data?.animation) return effect.data.animation
+  const theme = shop.activeTheme
+  if (theme?.data?.animation) return theme.data.animation
+  return null
+})
+
 const calendarPageBgs = {
+  default: 'linear-gradient(135deg, #f0ecf6 0%, #e8e4f0 50%, #e2dcea 100%)',
   classic: 'linear-gradient(135deg, #e5ded4 0%, #e0d9ce 50%, #e5e0d8 100%)',
   autumn: 'linear-gradient(135deg, #faf6ee 0%, #f8f2e4 50%, #f5ecd8 100%)',
   winter: 'linear-gradient(135deg, #f0f4fa 0%, #e8f0f8 50%, #dde8f4 100%)',
@@ -123,6 +144,17 @@ const calendarPageBgs = {
   summer: 'linear-gradient(135deg, #faf8ee 0%, #f6f2e0 50%, #f0eeda 100%)',
   rain: 'linear-gradient(135deg, #eceef2 0%, #e4e6ec 50%, #dcdfe6 100%)',
   retro: 'linear-gradient(135deg, #f8f2e8 0%, #f4ece0 50%, #f0e8d8 100%)',
+  sunset: 'linear-gradient(135deg, #fdf0e6 0%, #fbe4d0 50%, #f8d8ba 100%)',
+  coral: 'linear-gradient(135deg, #fdf2f4 0%, #fbe8ec 50%, #f8dce2 100%)',
+  mountain: 'linear-gradient(135deg, #eef4f0 0%, #e4ece6 50%, #dae4dc 100%)',
+  galaxy: 'linear-gradient(135deg, #0e0a20 0%, #161230 50%, #1e1a3a 100%)',
+  galaxy_deep: 'linear-gradient(135deg, #080418 0%, #10082a 50%, #180e36 100%)',
+  nebula: 'linear-gradient(135deg, #1a0a2e 0%, #2a1040 50%, #1e1838 100%)',
+  golden: 'linear-gradient(135deg, #faf6e8 0%, #f6f0d4 50%, #f0e8c0 100%)',
+  misty: 'linear-gradient(135deg, #f0f2f6 0%, #e8eaef 50%, #dfe2e8 100%)',
+  forest: 'linear-gradient(135deg, #eaf0e6 0%, #e0e8da 50%, #d6e0d0 100%)',
+  snow: 'linear-gradient(135deg, #f8faff 0%, #f0f4fc 50%, #e8eef8 100%)',
+  cherry_blossom: 'linear-gradient(135deg, #fdf0f4 0%, #f8e4ec 50%, #f4d8e4 100%)',
 }
 const pageBodyBg = computed(() => {
   if (shop.darkMode) return 'linear-gradient(135deg, #13131f, #1a1a2e)'
@@ -134,12 +166,24 @@ const pageBodyBg = computed(() => {
   return currentTheme.value.lightBg
 })
 
-const currentQuote = ref(store.getDialogue())
+
+// 同步背景到 App.vue
+const setPageBg = inject('setAppPageBg', () => {})
+watch(pageBodyBg, (bg) => setPageBg(bg), { immediate: true })
+
+const currentQuote = ref(store.getDialogue(shop))
+
+// 切回首页或语录库变化时刷新语录
+watch(activeTab, (tab) => {
+  if (tab === 'home') currentQuote.value = store.getDialogue(shop)
+})
+watch(() => shop.extraQuotes.length, () => {
+  if (activeTab.value === 'home') currentQuote.value = store.getDialogue(shop)
+})
 
 const showEffect = ref(false)
 const effectAnimation = ref('')
-const checkinReward = ref(0)
-const checkinBonusRate = ref(0)
+const checkinDetails = ref(null)
 const effectLevel = computed(() => {
   if (shop.useOriginalStyle) return 0
   return shop.activeEffect ? 1 : 0
@@ -153,15 +197,13 @@ const checkinEffects = {
   fire: '🔥', magic_circle: '🔯', aurora: '🌈',
 }
 
-function playCheckinEffect(reward) {
+function playCheckinEffect(details) {
   const effect = shop.activeEffect
-  checkinReward.value = reward || 0
-  checkinBonusRate.value = shop.coinBonusRate
+  checkinDetails.value = details
   if (effect) {
     effectAnimation.value = effect.data.animation
     showEffect.value = true
   } else {
-    // 没有装备特效也显示奖励
     effectAnimation.value = ''
     showEffect.value = true
   }
@@ -170,14 +212,14 @@ function playCheckinEffect(reward) {
 function handleCheckin() {
   const result = store.checkIn()
   if (result) {
-    let finalReward = result
+    let finalReward = result.reward
     // 签到增幅道具（50%概率回本）
     if (shop.consumables.magnet > 0) {
-      shop.consumables.magnet--; const extra = result * 4; store.coins += extra; store.logCoin(extra, '🧲 磁铁×5加成')
+      shop.consumables.magnet--; const extra = result.reward * 4; store.coins += extra; finalReward += extra; store.logCoin(extra, '🧲 磁铁×5加成')
     } else if (shop.consumables.triple_coin > 0) {
-      shop.consumables.triple_coin--; const extra = result * 2; store.coins += extra; store.logCoin(extra, '💎 三倍币加成')
+      shop.consumables.triple_coin--; const extra = result.reward * 2; store.coins += extra; finalReward += extra; store.logCoin(extra, '💎 三倍币加成')
     } else if (shop.consumables.double_coin > 0) {
-      shop.consumables.double_coin--; const extra = result; store.coins += extra; store.logCoin(extra, '✨ 双倍币加成')
+      shop.consumables.double_coin--; const extra = result.reward; store.coins += extra; finalReward += extra; store.logCoin(extra, '✨ 双倍币加成')
     }
     // 幸运道具（50%概率赚）
     if (shop.consumables.lucky_star > 0) {
@@ -185,16 +227,11 @@ function handleCheckin() {
     } else if (shop.consumables.lucky > 0) {
       shop.consumables.lucky--; const bonus = Math.floor(Math.random() * 51); store.coins += bonus; finalReward += bonus; store.logCoin(bonus, '🍀 幸运草')
     }
+    result.reward = finalReward
     const sound = shop.equippedItems.sound
     if (sound) playSound(sound)
-    playCheckinEffect(finalReward)
-    const toasts = store.popToasts()
-    // 隐藏台词检查
-    const newDialogues = shop.checkHiddenDialogues()
-    newDialogues.forEach(d => toasts.push(`🎭 隐藏台词：${d.text}`))
-    // 称号检查
-    const newTitles = shop.checkTitles()
-    newTitles.forEach(t => toasts.push(`🏅 解锁称号「${t.name}」！`))
+    playCheckinEffect(result)
+    const toasts = result.toasts || []
     toasts.forEach((t, i) => setTimeout(() => emit('show-toast', t), (i + 1) * 1500))
   } else {
     emit('show-toast', '✅ 今天已经打卡过啦~')
@@ -261,6 +298,7 @@ const tabs = [
 
 <template>
   <div class="page" :class="{ 'dark-mode': shop.darkMode }" :style="{ '--theme-accent': currentTheme.accent, '--theme-gradient': currentTheme.gradient, '--theme-bg': currentTheme.lightBg }">
+    <ThemeDecor :key="currentAnimation || 'none'" :animation="currentAnimation" />
     <div class="page-body" :style="{ background: pageBodyBg }">
       <!-- 首页 -->
       <div v-if="activeTab === 'home'" class="tab-content">
@@ -299,8 +337,14 @@ const tabs = [
           </div>
           <div class="season-right">
             <span v-if="seasonEvent.coinBonus > 1" class="season-badge">×{{ seasonEvent.coinBonus }} 金币加成</span>
-            <button v-if="seasonEvent.easterEgg" class="egg-btn" :class="{ claimed: easterEggClaimed }" @click="claimEasterEgg">
-              {{ seasonEvent.easterEgg.icon }}
+            <button
+              v-if="seasonEvent.easterEgg"
+              class="egg-btn"
+              :class="{ claimed: easterEggClaimed, 'just-claimed': easterEggJustClaimed }"
+              :disabled="easterEggClaimed"
+              @click="claimEasterEgg"
+            >
+              {{ easterEggClaimed ? '🔒' : seasonEvent.easterEgg.icon }}
             </button>
           </div>
         </div>
@@ -317,6 +361,22 @@ const tabs = [
                 <div class="egg-reward"><span>💰</span><span class="egg-num">+{{ easterEggResult.reward }}</span></div>
                 <div class="egg-encourage">{{ easterEggResult.encourage }}</div>
                 <button class="btn-primary" @click="easterEggShow = false">开心收下~</button>
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
+
+        <!-- 日记详情弹窗 -->
+        <Teleport to="body">
+          <Transition name="pop">
+            <div v-if="showJournalDetail && journalDetail" class="modal-mask" @click="showJournalDetail = false">
+              <div class="modal-box journal-detail-modal" @click.stop>
+                <div class="jd-header">
+                  <span v-if="journalDetail.mood" class="jd-mood" :style="{ background: getMoodStyle(journalDetail.mood).bg }">{{ getMoodStyle(journalDetail.mood).icon }}</span>
+                  <span class="jd-time">{{ journalDetail.date }} {{ journalDetail.time }}</span>
+                </div>
+                <div class="jd-body">{{ journalDetail.text }}</div>
+                <button class="btn-primary" @click="showJournalDetail = false">关闭</button>
               </div>
             </div>
           </Transition>
@@ -365,29 +425,30 @@ const tabs = [
             </button>
           </div>
           <div class="input-row">
-            <input v-model="newJournal" class="journal-input" placeholder="写下此刻的心情..." @keyup.enter="submitJournal" />
+            <input v-model="newJournal" class="journal-input" maxlength="500" placeholder="写下此刻的心情..." @keyup.enter="submitJournal" />
             <button class="add-btn" @click="submitJournal">
               <span>+</span>
             </button>
           </div>
+          <div class="char-count" :class="{ warn: newJournal.length >= 450 }">{{ newJournal.length }}/500</div>
           <div class="journal-list">
-            <div v-for="(item, i) in store.journal" :key="i" class="journal-item">
+            <div v-for="(item, i) in store.journal" :key="item.id || i" class="journal-item" @click="openJournalDetail(item)">
               <span v-if="item.mood" class="item-mood" :style="{ background: getMoodStyle(item.mood).bg }">{{ getMoodStyle(item.mood).icon }}</span>
               <div class="item-body">
                 <span class="item-text">{{ item.text }}</span>
                 <span class="item-time">{{ item.date }} {{ item.time }}</span>
               </div>
-              <button class="item-del" @click="store.removeJournal(i)">×</button>
+              <button class="item-del" @click.stop="store.removeJournal(i)">×</button>
             </div>
             <div v-if="store.journal.length === 0" class="empty-hint">还没有记录，写点什么吧~</div>
           </div>
         </div>
       </div>
 
-      <div v-if="activeTab === 'calendar'" class="tab-content calendar-tab"><PageCalendar /></div>
+      <div v-if="activeTab === 'calendar'" class="tab-content calendar-tab" :key="shop.equippedItems.calendar || 'calendar-default'"><PageCalendar /></div>
       <div v-if="activeTab === 'quote'" class="tab-content"><PageQuote @show-toast="emit('show-toast', $event)" /></div>
       <div v-if="activeTab === 'achieve'" class="tab-content"><PageAchieve /></div>
-      <div v-if="activeTab === 'shop'" class="tab-content shop-tab"><PageShop /></div>
+      <div v-if="activeTab === 'shop'" class="tab-content shop-tab"><PageShop @show-toast="emit('show-toast', $event)" /></div>
       <div v-if="activeTab === 'more'" class="tab-content"><PageMore @show-toast="emit('show-toast', $event)" /></div>
     </div>
 
@@ -395,8 +456,7 @@ const tabs = [
     <CheckinEffect
       :show="showEffect"
       :effect="effectAnimation"
-      :reward="checkinReward"
-      :bonusRate="checkinBonusRate"
+      :details="checkinDetails"
       @close="showEffect = false"
     />
 
@@ -415,15 +475,18 @@ const tabs = [
 .dark-mode { background: linear-gradient(135deg, #13131f, #1a1a2e); }
 
 .page-body {
-  flex: 1; min-width: 0;
+  position: relative;
+  flex: 1; min-height: 0;
   overflow-y: auto; overflow-x: hidden;
   padding-bottom: 88px;
+  z-index: 0;
 }
 
 .tab-content {
   padding: 28px 36px 40px;
   display: flex; flex-direction: column; gap: 20px;
   max-width: 880px; margin: 0 auto; width: 100%;
+  position: relative; z-index: 3;
 }
 
 /* ===== Hero 横幅 ===== */
@@ -442,7 +505,7 @@ const tabs = [
 .hero-content { position: relative; z-index: 1; }
 .hero-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
 .hero-date-area { display: flex; align-items: center; gap: 20px; }
-.hero-day { font-size: 68px; font-weight: 900; line-height: 1; letter-spacing: -3px; text-shadow: 0 3px 16px rgba(0,0,0,0.2); }
+.hero-day { font-size: 68px; font-weight: 900; line-height: 1; letter-spacing: -1px; text-shadow: 0 3px 16px rgba(0,0,0,0.2); }
 .hero-meta { display: flex; flex-direction: column; gap: 6px; }
 .hero-month { font-size: 18px; font-weight: 800; text-shadow: 0 1px 6px rgba(0,0,0,0.12); }
 .hero-week { font-size: 14px; font-weight: 600; opacity: 0.9; text-shadow: 0 1px 4px rgba(0,0,0,0.1); }
@@ -501,6 +564,9 @@ const tabs = [
 }
 .egg-btn:hover { transform: scale(1.2); }
 .egg-btn.claimed { animation: none; opacity: 0.4; cursor: default; filter: grayscale(0.5); }
+.egg-btn.claimed:hover { transform: none; }
+.egg-btn:disabled { pointer-events: none; }
+.egg-btn.just-claimed { animation: none; }
 @keyframes bounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
 /* 彩蛋弹窗 */
@@ -526,6 +592,20 @@ const tabs = [
 .egg-reward { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
 .egg-num { font-size: 30px; font-weight: 900; color: var(--c-gold); }
 .egg-encourage { font-size: 13px; color: var(--c-text-muted); margin-bottom: 18px; }
+.journal-detail-modal { padding: 32px 36px 28px; max-width: 480px; width: 90%; text-align: left; }
+.jd-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.jd-mood {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.jd-time { font-size: 13px; color: var(--c-text-muted); }
+.jd-body {
+  font-size: 14px; line-height: 1.8; color: var(--c-text);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 50vh; overflow-y: auto;
+  padding: 16px; background: rgba(238,232,222,0.5);
+  border-radius: var(--radius-sm); margin-bottom: 20px;
+}
 .btn-primary {
   padding: 14px 40px; border: none; border-radius: var(--radius-md);
   background: linear-gradient(135deg, #e85d75, #d4a853);
@@ -606,7 +686,12 @@ const tabs = [
 }
 .mood-btn:hover { background: rgba(0,0,0,0.05); transform: scale(1.1); }
 .mood-btn.active { transform: scale(1.1); }
-.input-row { display: flex; gap: 10px; padding: 12px 28px; }
+.input-row { display: flex; gap: 10px; padding: 12px 28px 0; }
+.char-count {
+  text-align: right; font-size: 13px; color: #999;
+  padding: 4px 30px 0; font-weight: 600;
+}
+.char-count.warn { color: #ef4444; font-weight: 700; }
 .journal-input {
   flex: 1; padding: 13px 18px;
   border: 1.5px solid rgba(0,0,0,0.06);
@@ -636,6 +721,7 @@ const tabs = [
   padding: 13px 16px; background: rgba(238,232,222,0.6);
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
+  cursor: pointer;
 }
 .journal-item:hover { background: rgba(238,232,222,0.85); }
 .item-mood {
@@ -644,7 +730,11 @@ const tabs = [
   font-size: 16px; flex-shrink: 0;
 }
 .item-body { flex: 1; min-width: 0; }
-.item-text { font-size: 14px; color: #5a5a66; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.item-text {
+  font-size: 14px; color: #5a5a66; display: -webkit-box; font-weight: 500;
+  -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis; word-break: break-word;
+}
 .item-time { font-size: 13px; color: var(--c-text-muted); margin-top: 3px; display: block; }
 .item-del {
   width: 30px; height: 30px; border: none; border-radius: 8px;
@@ -661,9 +751,9 @@ const tabs = [
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 4px;
   padding: 8px 14px;
-  background: rgba(238,232,222,0.85);
-  backdrop-filter: blur(24px) saturate(1.3);
-  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(30px) saturate(1.4);
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
   border-radius: 28px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
   border: 1px solid rgba(255,255,255,0.5);
@@ -734,8 +824,10 @@ const tabs = [
 .dark-mode .journal-input { background: rgba(30,30,50,0.6) !important; border-color: rgba(100,100,140,0.12) !important; }
 .dark-mode .journal-input:focus { background: rgba(30,30,50,0.8) !important; }
 .dark-mode .item-text { color: #d0d0e0 !important; }
+.dark-mode .item-time { color: #c8c8dc !important; }
 .dark-mode .empty-hint { color: #555 !important; }
 .dark-mode .item-del:hover { background: rgba(239,68,68,0.15) !important; }
+.dark-mode .jd-body { background: rgba(30,30,50,0.5) !important; }
 
 /* 输入框通用 */
 .dark-mode input, .dark-mode textarea { background: rgba(30,30,50,0.6) !important; color: #e0e0f0 !important; border-color: rgba(100,100,140,0.12) !important; }
@@ -795,6 +887,11 @@ const tabs = [
 .dark-mode .ach-tag-label.挑战 { background: rgba(217,119,6,0.2) !important; color: #fbbf24 !important; }
 .dark-mode .ach-tag-label.循环 { background: rgba(5,150,105,0.2) !important; color: #34d399 !important; }
 .dark-mode .ach-tag-label.传说 { background: rgba(180,83,9,0.2) !important; color: #fbbf24 !important; }
+.dark-mode .ach-tag-label.心情 { background: rgba(219,39,119,0.15) !important; color: #f472b6 !important; }
+.dark-mode .ach-tag-label.消费 { background: rgba(124,58,237,0.15) !important; color: #a78bfa !important; }
+.dark-mode .ach-tag-label.时光 { background: rgba(2,132,199,0.15) !important; color: #38bdf8 !important; }
+.dark-mode .ach-tag-label.收集 { background: rgba(234,88,12,0.15) !important; color: #fb923c !important; }
+.dark-mode .ach-tag-label.彩蛋 { background: rgba(202,138,4,0.15) !important; color: #fbbf24 !important; }
 
 /* 语录页 */
 .dark-mode .quote-showcase { background: rgba(22,22,38,0.88) !important; }

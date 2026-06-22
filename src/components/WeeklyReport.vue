@@ -239,7 +239,7 @@ function download() {
   const canvas = canvasRef.value
   if (!canvas) return
   const link = document.createElement('a')
-  link.download = 'dino-weekly-report.png'
+  link.download = '逐光手帐_周报.png'
   link.href = canvas.toDataURL('image/png')
   link.click()
 }

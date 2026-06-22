@@ -1,50 +1,74 @@
 export const STORAGE_KEY = 'dino-app-data'
 export const SHOP_KEY = 'dino-app-shop'
 
-const isElectron = typeof window !== 'undefined' && window.electronAPI
+let _cache = null
+let _pendingWrite = null
+let _flushHandler = null
+
+function getCache() {
+  if (_cache) return _cache
+  const api = window.electronAPI
+  if (api && api.initialData && typeof api.initialData === 'object') {
+    _cache = JSON.parse(JSON.stringify(api.initialData))
+  } else {
+    _cache = {}
+  }
+  return _cache
+}
 
 /**
- * 加载指定 key 的状态
- * Electron 模式：从本地文件读取（文件为 { "dino-app-data": {...}, "dino-app-shop": {...} } 结构）
- * 浏览器模式：从 localStorage 读取
- * 首次运行自动迁移旧的 localStorage 数据
+ * 加载指定 key 的状态（从内存缓存读取，预加载阶段已从文件同步读取）
  */
 export function loadState(key = STORAGE_KEY) {
   try {
-    if (isElectron) {
-      const all = window.electronAPI.initialData
-      if (all && all[key]) return all[key]
-      // 文件中没有该 key，尝试从旧 localStorage 迁移
-      const legacy = localStorage.getItem(key)
-      if (legacy) {
-        const parsed = JSON.parse(legacy)
-        saveState(parsed, key)
-        localStorage.removeItem(key)
-        return parsed
-      }
-      return null
-    }
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : null
-  } catch {
+    const all = getCache()
+    return (all && typeof all === 'object' && key in all) ? all[key] : null
+  } catch (e) {
+    console.error('[useStorage] loadState 异常:', e)
     return null
   }
 }
 
 /**
- * 保存指定 key 的状态
- * Electron 模式：读取完整文件 → 合并该 key → 写回（防止并发覆盖）
- * 浏览器模式：写入 localStorage
+ * 保存指定 key 的状态（更新内存缓存 → 同步写回文件）
  */
 export function saveState(state, key = STORAGE_KEY) {
   try {
-    if (isElectron) {
-      const all = window.electronAPI.initialData || {}
-      all[key] = state
-      window.electronAPI.initialData = all
-      window.electronAPI.writeData(JSON.stringify(all))
+    const api = window.electronAPI
+    const all = getCache()
+    if (state === null) {
+      delete all[key]
     } else {
-      localStorage.setItem(key, JSON.stringify(state))
+      all[key] = state
     }
-  } catch {}
+    _cache = all
+    if (api && api.writeData) {
+      _pendingWrite = Promise.resolve(api.writeData(JSON.stringify(all)))
+      return _pendingWrite
+    }
+  } catch (e) {
+    console.error('[useStorage] saveState 异常:', e)
+  }
+}
+
+export function flushState() {
+  try {
+    const api = window.electronAPI
+    if (api && api.writeData) {
+      return Promise.resolve(api.writeData(JSON.stringify(getCache())))
+    }
+  } catch (e) {
+    console.error('[useStorage] flushState 异常:', e)
+  }
+}
+
+export function registerFlushHandler(handler) {
+  _flushHandler = handler
+}
+
+export function flushBeforeExit() {
+  if (typeof _flushHandler === 'function') {
+    return _flushHandler()
+  }
+  return flushState()
 }

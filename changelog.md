@@ -1,5 +1,82 @@
 # 更新日志
 
+## v3.0.0 — 视觉效果系统 & 日历重设计 & 全面 Bug 修复
+
+### ✨ 功能新增
+
+#### 1. 装备动画效果系统
+- 新增 `ShopItemAnim.vue` 组件，支持 30+ 种 CSS 动画类型
+- 新增 `shopAnimations.js`，为 166 个商品配置独立动画
+- 主题装备后在首页显示全屏背景动画（花瓣、萤火虫、极光、银河等）
+- 特效装备后在签到时显示对应动画
+- 抽奖结果弹窗显示对应物品动画
+- 动画集中在左右两侧，不遮挡中间内容
+
+#### 2. 日历样式重设计（19 个）
+- 每个日历风格有独特的视觉语言，不再只是换色
+- 秋日：枫叶橙暖阳 | 冬日：冰晶蓝 | 春日：樱花粉 | 星空：深紫夜空
+- 夏日：阳光金黄 | 雨天：灰蓝阴郁 | 复古：牛皮纸 | 珊瑚：海洋粉
+- 山川：森林绿 | 日落：晚霞橙 | 星河：深空紫黑
+- 抽奖独占：星云、樱花、薄雾、金秋、深银河、森林、雪国
+- 日历顶栏文字颜色和背景通过 JS 直接设置，确保所有样式正确显示
+
+#### 3. 流星动画
+- 星空黑/暗夜主题显示弧线流星效果
+- 从左上划到右下，尾部渐消
+- GPU 加速，不卡顿
+
+#### 4. 语录自动刷新
+- 购买语录包后首页语录自动更新，无需切换页面
+
+---
+
+### 🐛 Bug 修复
+
+| Bug | 文件 | 修复 |
+|-----|------|------|
+| `isPerfectWeek()` 周一就判定满勤 | `game.js` | 改为仅周日判定 |
+| `isPerfectMonth()` 1 号就判定满勤 | `game.js` | 改为仅月末判定 |
+| `buyLimitedItem` 不处理消耗品 | `shop.js` | 添加 type 检查 |
+| `addFavoriteQuote` 重复收藏返回 undefined | `game.js` | 返回空数组 |
+| `getDialogue` 中 `.data.quotes` 可能 undefined | `game.js` | 添加可选链 |
+| `minCoinsEver` 商店消费不更新 | `game.js` | 添加 watch 监听 |
+| `checkIn` 中 `today()` 午夜边界 | `game.js` | 缓存到 todayStr |
+| 签到特效弹窗不含道具倍率加成 | `PageHome.vue` | finalReward += extra |
+| 日记删除无确认 | `PageHome.vue` | 添加 confirm 弹窗 |
+| 语录收藏删除无确认 | `PageQuote.vue` | 添加 confirm 弹窗 |
+| 高级扭蛋奖品池预览显示错误 | `PageShop.vue` | 添加 activeGachaByRarity |
+| 购买/抽奖失败无提示 | `PageShop.vue` | 添加失败 toast |
+| 语录类物品显示装备按钮 | `PageShop.vue` | 限制为 equipable 类型 |
+| "再买一个"按钮无禁用状态 | `PageShop.vue` | 添加 :disabled 检查 |
+| 道具使用过早调用 checkAchievements | `PageShop.vue` | 赌博道具延迟检查 |
+| 手册扭蛋价格与代码不一致 | `PageMore.vue` | 修正为 50/225, 200/900 |
+| 手册签到奖励上限错误 | `PageMore.vue` | 50 → 40 |
+| 日历 styleMap 缺少样式 | `PageCalendar.vue` | 补全 19 个样式 |
+| 日历顶栏 CSS 覆盖内联样式 | `PageCalendar.vue` | JS 直接设置 |
+| `logCoin` 时间戳缺少年份 | `game.js` | 添加年份 |
+| 深色模式成就标签样式缺失 | `PageHome.vue` | 补全 5 个标签 |
+
+---
+
+### 🎨 视觉优化
+
+- 珊瑚海气泡改为柔和粉色光晕
+- 深林萤火虫改为暖金色（不与绿色背景融合）
+- 商店预览动画仅主题/相框/日历/道具显示
+- 成就页深色模式标签样式补全
+
+---
+
+### 📦 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `src/components/ShopItemAnim.vue` | 商品动画渲染组件（商店/抽奖结果） |
+| `src/components/ThemeDecor.vue` | 首页全屏背景动画组件（装备主题/特效） |
+| `src/data/shopAnimations.js` | 166 个商品的动画配置 |
+
+---
+
 ## v2.0.0 — 存储架构升级 & 功能扩展 & Bug 修复
 
 ### 🔄 重大变更

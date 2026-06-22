@@ -16,6 +16,7 @@ function defaultShopState() {
     gachaCount: 0,
     gachaHistory: [],
     totalGachaPulls: 0,
+    premiumGachaCount: 0,
     selectedQuoteCategories: [],
     quoteCategoriesExplicitlySet: false, // 区分"从未设置"和"已卸下全部"
     // 新系统
@@ -142,6 +143,7 @@ export const useShopStore = defineStore('shop', () => {
     limitedShopItems: saved.limitedShopItems || [],
     unlockedHiddenDialogues: saved.unlockedHiddenDialogues || [],
     totalGachaPulls: saved.totalGachaPulls || 0,
+    premiumGachaCount: saved.premiumGachaCount || 0,
   } : def
 
   const purchasedItems = ref(initial.purchasedItems)
@@ -150,6 +152,7 @@ export const useShopStore = defineStore('shop', () => {
   const gachaCount = ref(initial.gachaCount)
   const gachaHistory = ref(initial.gachaHistory)
   const totalGachaPulls = ref(initial.totalGachaPulls)
+  const premiumGachaCount = ref(initial.premiumGachaCount || 0)
   const selectedQuoteCategories = ref(initial.selectedQuoteCategories || [])
   const quoteCategoriesExplicitlySet = ref(initial.quoteCategoriesExplicitlySet || false)
   const ownedTitles = ref(initial.ownedTitles)
@@ -157,7 +160,7 @@ export const useShopStore = defineStore('shop', () => {
   const lastLimitedRefresh = ref(initial.lastLimitedRefresh)
   const limitedShopItems = ref(initial.limitedShopItems)
   const useOriginalStyle = ref(initial.useOriginalStyle || false)
-  const darkMode = ref(initial.darkMode !== undefined ? initial.darkMode : true)
+  const darkMode = ref(saved?.darkMode ?? false) // 默认浅色，用户切换后才保存深色
   const unlockedHiddenDialogues = ref(initial.unlockedHiddenDialogues || [])
 
   // 每日自动刷新限时商店
@@ -168,7 +171,7 @@ export const useShopStore = defineStore('shop', () => {
   }
 
   // 持久化
-  watch([purchasedItems, equippedItems, consumables, gachaCount, gachaHistory, totalGachaPulls, selectedQuoteCategories, quoteCategoriesExplicitlySet, ownedTitles, activeTitle, lastLimitedRefresh, limitedShopItems, useOriginalStyle, darkMode, unlockedHiddenDialogues], () => {
+  watch([purchasedItems, equippedItems, consumables, gachaCount, gachaHistory, totalGachaPulls, premiumGachaCount, selectedQuoteCategories, quoteCategoriesExplicitlySet, ownedTitles, activeTitle, lastLimitedRefresh, limitedShopItems, useOriginalStyle, darkMode, unlockedHiddenDialogues], () => {
     try {
       saveState({
         purchasedItems: purchasedItems.value,
@@ -177,6 +180,7 @@ export const useShopStore = defineStore('shop', () => {
         gachaCount: gachaCount.value,
         gachaHistory: gachaHistory.value,
         totalGachaPulls: totalGachaPulls.value,
+        premiumGachaCount: premiumGachaCount.value,
         selectedQuoteCategories: selectedQuoteCategories.value,
         quoteCategoriesExplicitlySet: quoteCategoriesExplicitlySet.value,
         ownedTitles: ownedTitles.value,
@@ -193,8 +197,199 @@ export const useShopStore = defineStore('shop', () => {
   // ===== 计算属性 =====
   const allCatalogItems = computed(() => [...catalog, ...gachaPool, ...(premiumGachaPool || [])])
 
+  const calendarEffectMap = {
+    classic: { kind: 'base', target: 'topBar', premium: false, tier: 'basic', intensity: 1 },
+    summer: { kind: 'accent', target: 'topBar', premium: false, tier: 'basic', intensity: 1 },
+    sunset: { kind: 'accent', target: 'topBar', premium: false, tier: 'basic', intensity: 1 },
+    autumn: { kind: 'accent', target: 'dayCellChecked', premium: false, tier: 'basic', intensity: 1 },
+    spring: { kind: 'overlay', target: 'dayCellToday', premium: false, tier: 'basic', intensity: 1 },
+    coral: { kind: 'overlay', target: 'legend', premium: false, tier: 'basic', intensity: 1 },
+    winter: { kind: 'micro-anim', target: 'dayCellToday', premium: false, tier: 'basic', intensity: 1 },
+    mountain: { kind: 'overlay', target: 'stats', premium: false, tier: 'basic', intensity: 1 },
+    rain: { kind: 'micro-anim', target: 'topBar', premium: false, tier: 'basic', intensity: 1 },
+    retro: { kind: 'accent', target: 'legend', premium: false, tier: 'basic', intensity: 1 },
+    starry: { kind: 'premium-overlay', target: 'topBar', premium: true, tier: 'premium', intensity: 2 },
+    galaxy: { kind: 'premium-overlay', target: 'dayCellChecked', premium: true, tier: 'premium', intensity: 3 },
+    nebula: { kind: 'premium-overlay', target: 'dayCellToday', premium: true, tier: 'premium', intensity: 3 },
+    galaxy_deep: { kind: 'premium-overlay', target: 'topBar', premium: true, tier: 'premium', intensity: 3 },
+    forest: { kind: 'premium-overlay', target: 'stats', premium: true, tier: 'premium', intensity: 3 },
+    snow: { kind: 'premium-overlay', target: 'legend', premium: true, tier: 'premium', intensity: 2 },
+    cherry_blossom: { kind: 'overlay', target: 'dayCellToday', premium: false, tier: 'basic', intensity: 1 },
+    misty: { kind: 'overlay', target: 'topBar', premium: false, tier: 'basic', intensity: 1 },
+    golden: { kind: 'accent', target: 'dayCellChecked', premium: false, tier: 'basic', intensity: 1 },
+  }
+
+  const calendarPremiumStyleMap = {
+    cal_starry: {
+      tone: 'moonlit',
+      accent: 'linear-gradient(135deg, rgba(181,171,255,0.92), rgba(133,120,214,0.92))',
+      overlay: 'radial-gradient(circle at top left, rgba(223,216,255,0.28), transparent 45%)',
+      tag: '月光星辉',
+      checkedGlow: '0 0 0 1px rgba(220,214,255,0.35), 0 10px 24px rgba(120,110,170,0.18)',
+      motion: 'float-stars',
+    },
+    cal_galaxy: {
+      tone: 'nebula',
+      accent: 'linear-gradient(135deg, rgba(132,121,214,0.96), rgba(86,76,150,0.96))',
+      overlay: 'radial-gradient(circle at top right, rgba(166,151,255,0.24), transparent 42%)',
+      tag: '星河深境',
+      checkedGlow: '0 0 0 1px rgba(188,180,255,0.3), 0 12px 28px rgba(92,84,142,0.22)',
+      motion: 'nebula-drift',
+    },
+    gacha_cal_nebula: {
+      tone: 'mist',
+      accent: 'linear-gradient(135deg, rgba(143,177,212,0.96), rgba(92,126,168,0.96))',
+      overlay: 'radial-gradient(circle at top center, rgba(209,224,245,0.28), transparent 48%)',
+      tag: '云雾星云',
+      checkedGlow: '0 0 0 1px rgba(205,225,244,0.26), 0 10px 24px rgba(92,126,168,0.2)',
+      motion: 'mist-sweep',
+    },
+    cal_classic: {
+      tone: 'paper',
+      accent: 'linear-gradient(135deg, rgba(214,160,180,0.9), rgba(200,176,160,0.9))',
+      overlay: 'radial-gradient(circle at top left, rgba(255,245,240,0.18), transparent 48%)',
+      tag: '纸感初版',
+      checkedGlow: '0 6px 18px rgba(212,160,180,0.14)',
+      motion: 'paper-breathe',
+    },
+    cal_summer: {
+      tone: 'sunflower',
+      accent: 'linear-gradient(135deg, rgba(226,190,102,0.92), rgba(174,204,102,0.92))',
+      overlay: 'radial-gradient(circle at top right, rgba(255,244,200,0.24), transparent 44%)',
+      tag: '向日暖季',
+      checkedGlow: '0 8px 22px rgba(226,190,102,0.18)',
+      motion: 'sun-glow',
+    },
+    cal_sunset: {
+      tone: 'dusk',
+      accent: 'linear-gradient(135deg, rgba(228,148,128,0.92), rgba(198,132,170,0.92))',
+      overlay: 'radial-gradient(circle at top center, rgba(255,220,220,0.2), transparent 46%)',
+      tag: '暮色余晖',
+      checkedGlow: '0 8px 22px rgba(228,148,128,0.18)',
+      motion: 'sunset-bloom',
+    },
+    cal_autumn: {
+      tone: 'maple',
+      accent: 'linear-gradient(135deg, rgba(198,160,108,0.94), rgba(164,134,88,0.94))',
+      overlay: 'radial-gradient(circle at top left, rgba(255,238,210,0.2), transparent 46%)',
+      tag: '金叶秋章',
+      checkedGlow: '0 8px 22px rgba(198,160,108,0.18)',
+      motion: 'leaf-fall',
+    },
+    cal_spring: {
+      tone: 'blossom',
+      accent: 'linear-gradient(135deg, rgba(220,162,188,0.94), rgba(184,198,160,0.94))',
+      overlay: 'radial-gradient(circle at top right, rgba(255,235,244,0.24), transparent 44%)',
+      tag: '春樱新页',
+      checkedGlow: '0 8px 22px rgba(220,162,188,0.18)',
+      motion: 'petal-float',
+    },
+    cal_coral: {
+      tone: 'coastal',
+      accent: 'linear-gradient(135deg, rgba(232,152,170,0.92), rgba(124,190,186,0.92))',
+      overlay: 'radial-gradient(circle at top center, rgba(225,247,245,0.22), transparent 45%)',
+      tag: '珊瑚浅湾',
+      checkedGlow: '0 8px 22px rgba(124,190,186,0.2)',
+      motion: 'tide-shift',
+    },
+    cal_winter: {
+      tone: 'frost',
+      accent: 'linear-gradient(135deg, rgba(126,172,206,0.94), rgba(198,224,238,0.94))',
+      overlay: 'radial-gradient(circle at top left, rgba(235,248,255,0.28), transparent 48%)',
+      tag: '初雪薄霜',
+      checkedGlow: '0 8px 24px rgba(126,172,206,0.2)',
+      motion: 'frost-shimmer',
+    },
+    cal_mountain: {
+      tone: 'ridge',
+      accent: 'linear-gradient(135deg, rgba(148,170,160,0.94), rgba(118,140,126,0.94))',
+      overlay: 'radial-gradient(circle at top right, rgba(232,240,236,0.22), transparent 46%)',
+      tag: '山岭晨岚',
+      checkedGlow: '0 8px 22px rgba(118,140,126,0.18)',
+      motion: 'mist-peak',
+    },
+    cal_rain: {
+      tone: 'rain',
+      accent: 'linear-gradient(135deg, rgba(144,164,190,0.94), rgba(110,128,160,0.94))',
+      overlay: 'radial-gradient(circle at top center, rgba(236,242,248,0.22), transparent 44%)',
+      tag: '雨幕轻声',
+      checkedGlow: '0 8px 22px rgba(110,128,160,0.2)',
+      motion: 'rain-drift',
+    },
+    cal_retro: {
+      tone: 'nostalgia',
+      accent: 'linear-gradient(135deg, rgba(176,156,136,0.94), rgba(150,136,120,0.94))',
+      overlay: 'radial-gradient(circle at top left, rgba(248,238,224,0.22), transparent 44%)',
+      tag: '旧时光页',
+      checkedGlow: '0 8px 22px rgba(176,156,136,0.18)',
+      motion: 'film-grain',
+    },
+    gacha_cal_cherry_blossom: {
+      tone: 'petal',
+      accent: 'linear-gradient(135deg, rgba(234,172,196,0.95), rgba(208,160,184,0.95))',
+      overlay: 'radial-gradient(circle at top right, rgba(255,236,244,0.28), transparent 46%)',
+      tag: '花见轻粉',
+      checkedGlow: '0 8px 22px rgba(234,172,196,0.2)',
+      motion: 'petal-float',
+    },
+    gacha_cal_misty: {
+      tone: 'mist',
+      accent: 'linear-gradient(135deg, rgba(176,190,196,0.95), rgba(146,160,170,0.95))',
+      overlay: 'radial-gradient(circle at top center, rgba(244,248,250,0.24), transparent 48%)',
+      tag: '雾雨微岚',
+      checkedGlow: '0 8px 22px rgba(146,160,170,0.2)',
+      motion: 'mist-sweep',
+    },
+    gacha_cal_golden: {
+      tone: 'amber',
+      accent: 'linear-gradient(135deg, rgba(222,188,120,0.96), rgba(198,154,86,0.96))',
+      overlay: 'radial-gradient(circle at top left, rgba(255,246,220,0.24), transparent 45%)',
+      tag: '金秋微光',
+      checkedGlow: '0 8px 22px rgba(222,188,120,0.2)',
+      motion: 'sun-glow',
+    },
+    pgacha_cal_galaxy: {
+      tone: 'deep-galaxy',
+      accent: 'linear-gradient(135deg, rgba(106,96,176,0.98), rgba(62,56,110,0.98))',
+      overlay: 'radial-gradient(circle at top right, rgba(194,186,255,0.18), transparent 40%)',
+      tag: '深空银河',
+      checkedGlow: '0 0 0 1px rgba(202,196,255,0.28), 0 14px 30px rgba(62,56,110,0.26)',
+      motion: 'nebula-drift',
+    },
+    pgacha_cal_forest: {
+      tone: 'forest',
+      accent: 'linear-gradient(135deg, rgba(92,132,108,0.98), rgba(62,98,76,0.98))',
+      overlay: 'radial-gradient(circle at top left, rgba(198,226,210,0.18), transparent 42%)',
+      tag: '森境深呼吸',
+      checkedGlow: '0 0 0 1px rgba(198,226,210,0.24), 0 14px 30px rgba(62,98,76,0.24)',
+      motion: 'mist-peak',
+    },
+    pgacha_cal_snow: {
+      tone: 'snow',
+      accent: 'linear-gradient(135deg, rgba(168,200,224,0.98), rgba(120,154,186,0.98))',
+      overlay: 'radial-gradient(circle at top center, rgba(236,246,255,0.2), transparent 44%)',
+      tag: '雪国静白',
+      checkedGlow: '0 0 0 1px rgba(236,246,255,0.22), 0 14px 30px rgba(120,154,186,0.22)',
+      motion: 'frost-shimmer',
+    },
+  }
+
   function getItem(id) {
     return allCatalogItems.value.find(i => i.id === id)
+  }
+
+  function getCalendarEffect(itemOrId) {
+    const item = typeof itemOrId === 'string' ? getItem(itemOrId) : itemOrId
+    if (!item || item.category !== 'calendar') return null
+    return {
+      id: item.id,
+      name: item.name,
+      icon: item.icon,
+      source: item.source || 'shop',
+      isPremium: !!item.isPremium,
+      style: item.data?.style || 'default',
+      ...calendarEffectMap[item.data?.style || 'default'],
+    }
   }
 
   function isOwned(id) {
@@ -296,7 +491,8 @@ export const useShopStore = defineStore('shop', () => {
   })
 
   const allQuoteCategories = computed(() => {
-    return catalog.filter(i => i.category === 'quote').map(i => ({ id: i.id, name: i.name, icon: i.icon }))
+    const allItems = [...catalog, ...gachaPool, ...(premiumGachaPool || [])]
+    return allItems.filter(i => i.category === 'quote').map(i => ({ id: i.id, name: i.name, icon: i.icon }))
   })
 
   const extraQuotes = computed(() => {
@@ -331,7 +527,6 @@ export const useShopStore = defineStore('shop', () => {
     return newTitles
   }
 
-  // 购买称号
   function buyTitle(titleId) {
     const t = getTitle(titleId)
     if (!t || ownedTitles.value.includes(titleId)) return { ok: false }
@@ -341,7 +536,10 @@ export const useShopStore = defineStore('shop', () => {
     gameStore.totalSpent += t.cost
     if (t.cost > 0) gameStore.logCoin(-t.cost, `🏅 ${t.name}`)
     ownedTitles.value.push(titleId)
-    return { ok: true }
+    gameStore.checkAchievements()
+    const achievementToasts = gameStore.popToasts()
+    checkTitles()
+    return { ok: true, toasts: [`🏅 获得称号「${t.name}」！`, ...achievementToasts] }
   }
 
   // 装备称号
@@ -381,7 +579,14 @@ export const useShopStore = defineStore('shop', () => {
     } else {
       purchasedItems.value.push(itemId)
     }
-    return { ok: true }
+    gameStore.checkAchievements()
+    const achievementToasts = gameStore.popToasts()
+    const newTitles = checkTitles()
+    const toasts = []
+    if (item.type !== 'consumable') toasts.push(`🎉 购买成功：${item.name}`)
+    newTitles.forEach(t => toasts.push(`🏅 解锁称号「${t.name}」！`))
+    toasts.push(...achievementToasts)
+    return { ok: true, toasts }
   }
 
   // 购买限时商品（折扣价）
@@ -395,8 +600,18 @@ export const useShopStore = defineStore('shop', () => {
     gameStore.coins -= discountedPrice
     gameStore.totalSpent += discountedPrice
     gameStore.logCoin(-discountedPrice, `⏰ ${item.name}(-${limitedItem.discount}%)`)
-    purchasedItems.value.push(limitedItem.id)
-    return { ok: true }
+    if (item.type === 'consumable') {
+      consumables.value[item.data.propKey] = (consumables.value[item.data.propKey] || 0) + 1
+    } else {
+      purchasedItems.value.push(limitedItem.id)
+    }
+    gameStore.checkAchievements()
+    const achievementToasts = gameStore.popToasts()
+    const newTitles = checkTitles()
+    const toasts = [`🎉 限时折扣购买成功！`]
+    newTitles.forEach(t => toasts.push(`🏅 解锁称号「${t.name}」！`))
+    toasts.push(...achievementToasts)
+    return { ok: true, toasts }
   }
 
   // ===== 装备 =====
@@ -416,114 +631,142 @@ export const useShopStore = defineStore('shop', () => {
   // ===== 抽奖 =====
   function pullGacha(times = 1) {
     const gameStore = useGameStore()
-    const cost = times === 5 ? 650 : 150
+    const cost = times === 5 ? 225 : 50
     if (gameStore.coins < cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= cost
     gameStore.logCoin(-cost, `🎰 普通抽奖×${times}`)
     totalGachaPulls.value += times
 
     const results = []
-    let gotRareInFive = false
+    let gotItemInFive = false
 
     for (let i = 0; i < times; i++) {
       let rarity
-      if (gachaCount.value >= 50) {
-        rarity = Math.random() < 0.05 ? 'legendary' : 'epic'
-        gachaCount.value = 0
-      } else if (times === 5 && i === times - 1 && !gotRareInFive) {
+      let pityTriggered = false
+      if (gachaCount.value >= 30) {
+        rarity = Math.random() < 0.1 ? 'legendary' : 'epic'
+        pityTriggered = true
+      } else if (times === 5 && i === times - 1 && !gotItemInFive) {
         const roll = Math.random() * 100
         rarity = roll < 0.5 ? 'legendary' : roll < 3.5 ? 'epic' : 'rare'
-        gachaCount.value = 0
       } else {
         const roll = Math.random() * 100
-        if (roll < 0.5) { rarity = 'legendary'; gachaCount.value = 0 }
-        else if (roll < 3.5) { rarity = 'epic'; gachaCount.value = 0 }
-        else if (roll < 15.5) { rarity = 'rare'; gachaCount.value = 0 }
-        else { rarity = 'normal'; gachaCount.value++ }
+        if (roll < 0.5) rarity = 'legendary'
+        else if (roll < 3.5) rarity = 'epic'
+        else if (roll < 15.5) rarity = 'rare'
+        else rarity = 'normal'
       }
 
-      if (rarity !== 'normal' && times === 5) gotRareInFive = true
-
       if (rarity === 'normal') {
+        gachaCount.value++
         const reward = gachaNormalRewards[Math.floor(Math.random() * gachaNormalRewards.length)]
         gameStore.coins += reward.amount
         results.push({ ...reward, rarity: 'normal' })
       } else {
         const pool = gachaPool.filter(g => g.rarity === rarity)
         const unowned = pool.filter(g => !isOwned(g.id))
-        let item
         if (unowned.length > 0) {
-          item = unowned[Math.floor(Math.random() * unowned.length)]
+          const item = unowned[Math.floor(Math.random() * unowned.length)]
           purchasedItems.value.push(item.id)
           results.push({ ...item, rarity })
+          gachaCount.value = 0
+          gotItemInFive = true
         } else {
           const bonus = rarity === 'legendary' ? 200 : rarity === 'epic' ? 100 : 50
           gameStore.coins += bonus
           results.push({ type: 'coins', amount: bonus, name: `${bonus} 金币`, icon: '💰', rarity })
+          if (pityTriggered) { gachaCount.value = 0 } else { gachaCount.value++ }
         }
       }
     }
 
     gachaHistory.value = results
-    return { ok: true, results }
+    gameStore.checkAchievements()
+    const achievementToasts = gameStore.popToasts()
+    const newTitles = checkTitles()
+    const toasts = []
+    results.forEach(r => {
+      if (r.rarity === 'legendary' || r.rarity === 'epic' || r.rarity === 'rare') {
+        if (r.type !== 'coins') toasts.push(`🎁 获得${r.rarity === 'legendary' ? '传说' : r.rarity === 'epic' ? '史诗' : '稀有'}物品「${r.name}」`)
+      }
+    })
+    newTitles.forEach(t => toasts.push(`🏅 解锁称号「${t.name}」！`))
+    toasts.push(...achievementToasts)
+    return { ok: true, results, toasts }
   }
 
   // ===== 高级抽奖 =====
   function pullPremiumGacha(times = 1) {
     const gameStore = useGameStore()
-    const cost = times === 5 ? 6500 : 1500
+    const cost = times === 5 ? 900 : 200
     if (gameStore.coins < cost) return { ok: false, reason: 'insufficient' }
     gameStore.coins -= cost
     gameStore.logCoin(-cost, `💎 高级抽奖×${times}`)
     totalGachaPulls.value += times
 
     const results = []
-    let gotRareInFive = false
+    let gotItemInFive = false
 
     for (let i = 0; i < times; i++) {
       let rarity
-      if (times === 5 && i === times - 1 && !gotRareInFive) {
+      let pityTriggered = false
+      if (premiumGachaCount.value >= 20) {
+        rarity = 'legendary'
+        pityTriggered = true
+      } else if (times === 5 && i === times - 1 && !gotItemInFive) {
         rarity = Math.random() < 0.15 ? 'legendary' : 'epic'
       } else {
         const roll = Math.random() * 100
-        if (roll < 3) { rarity = 'legendary' }
-        else if (roll < 15) { rarity = 'epic' }
-        else if (roll < 40) { rarity = 'rare' }
-        else { rarity = 'normal' }
+        if (roll < 3) rarity = 'legendary'
+        else if (roll < 15) rarity = 'epic'
+        else if (roll < 40) rarity = 'rare'
+        else rarity = 'normal'
       }
 
-      if (rarity !== 'normal' && times === 5) gotRareInFive = true
-
       if (rarity === 'normal') {
-        const reward = { type: 'coins', amount: 100, name: '100 金币', icon: '💰' }
-        gameStore.coins += 100
+        premiumGachaCount.value++
+        const reward = { type: 'coins', amount: 80, name: '80 金币', icon: '💰' }
+        gameStore.coins += 80
         results.push({ ...reward, rarity: 'normal' })
       } else {
         const pool = (premiumGachaPool || []).filter(g => g.rarity === rarity)
         const unowned = pool.filter(g => !isOwned(g.id))
-        let item
         if (unowned.length > 0) {
-          item = unowned[Math.floor(Math.random() * unowned.length)]
+          const item = unowned[Math.floor(Math.random() * unowned.length)]
           purchasedItems.value.push(item.id)
           results.push({ ...item, rarity })
+          premiumGachaCount.value = 0
+          gotItemInFive = true
         } else {
           const fallbackPool = gachaPool.filter(g => g.rarity === rarity)
           const fallbackUnowned = fallbackPool.filter(g => !isOwned(g.id))
           if (fallbackUnowned.length > 0) {
-            item = fallbackUnowned[Math.floor(Math.random() * fallbackUnowned.length)]
+            const item = fallbackUnowned[Math.floor(Math.random() * fallbackUnowned.length)]
             purchasedItems.value.push(item.id)
             results.push({ ...item, rarity })
+            premiumGachaCount.value = 0
+            gotItemInFive = true
           } else {
             const bonus = rarity === 'legendary' ? 500 : rarity === 'epic' ? 250 : 100
             gameStore.coins += bonus
             results.push({ type: 'coins', amount: bonus, name: `${bonus} 金币`, icon: '💰', rarity })
+            if (pityTriggered) { premiumGachaCount.value = 0 } else { premiumGachaCount.value++ }
           }
         }
       }
     }
 
     gachaHistory.value = results
-    return { ok: true, results }
+    gameStore.checkAchievements()
+    const achievementToasts = gameStore.popToasts()
+    const newTitles = checkTitles()
+    const toasts = []
+    results.forEach(r => {
+      if (r.type !== 'coins') toasts.push(`🎁 获得${r.rarity === 'legendary' ? '传说' : r.rarity === 'epic' ? '史诗' : '稀有'}物品「${r.name}」`)
+    })
+    newTitles.forEach(t => toasts.push(`🏅 解锁称号「${t.name}」！`))
+    toasts.push(...achievementToasts)
+    return { ok: true, results, toasts }
   }
 
   // ===== 重置 =====
@@ -535,6 +778,7 @@ export const useShopStore = defineStore('shop', () => {
     gachaCount.value = def.gachaCount
     gachaHistory.value = def.gachaHistory
     totalGachaPulls.value = def.totalGachaPulls
+    premiumGachaCount.value = 0
     selectedQuoteCategories.value = def.selectedQuoteCategories
     quoteCategoriesExplicitlySet.value = def.quoteCategoriesExplicitlySet
     ownedTitles.value = def.ownedTitles
@@ -543,18 +787,29 @@ export const useShopStore = defineStore('shop', () => {
     limitedShopItems.value = def.limitedShopItems
     unlockedHiddenDialogues.value = def.unlockedHiddenDialogues
     useOriginalStyle.value = false
-    darkMode.value = true
+    darkMode.value = false
+    saveState({
+      purchasedItems: purchasedItems.value, equippedItems: equippedItems.value,
+      consumables: consumables.value, gachaCount: gachaCount.value, gachaHistory: gachaHistory.value,
+      totalGachaPulls: totalGachaPulls.value, premiumGachaCount: premiumGachaCount.value, selectedQuoteCategories: selectedQuoteCategories.value,
+      quoteCategoriesExplicitlySet: quoteCategoriesExplicitlySet.value,
+      ownedTitles: ownedTitles.value, activeTitle: activeTitle.value,
+      lastLimitedRefresh: lastLimitedRefresh.value, limitedShopItems: limitedShopItems.value,
+      useOriginalStyle: useOriginalStyle.value, darkMode: darkMode.value,
+      unlockedHiddenDialogues: unlockedHiddenDialogues.value,
+    }, SHOP_KEY)
   }
 
   function toggleOriginalStyle() { useOriginalStyle.value = !useOriginalStyle.value }
   function toggleDarkMode() { darkMode.value = !darkMode.value }
 
   return {
-    purchasedItems, equippedItems, consumables, gachaCount, gachaHistory, totalGachaPulls, selectedQuoteCategories, quoteCategoriesExplicitlySet,
+    purchasedItems, equippedItems, consumables, gachaCount, gachaHistory, totalGachaPulls, premiumGachaCount, selectedQuoteCategories, quoteCategoriesExplicitlySet,
     ownedTitles, activeTitle, lastLimitedRefresh, limitedShopItems, useOriginalStyle, darkMode,
     allCatalogItems, activeTheme, activeEffect, activeFrame, extraQuotes, allQuoteCategories,
     coinBonusRate, unlockedHiddenDialogues, allUnlockedDialogues,
     getItem, isOwned, isEquipped, ownedCount, categoryTotal, getTitle,
+    getCalendarEffect,
     buyItem, equipItem, useConsumable, pullGacha, pullPremiumGacha, resetShop,
     toggleQuoteCategory, setQuoteCategories, toggleOriginalStyle, toggleDarkMode,
     buyTitle, equipTitle, checkTitles, buyLimitedItem, checkHiddenDialogues,
